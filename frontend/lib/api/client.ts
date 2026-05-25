@@ -27,6 +27,20 @@ export async function apiClient<T>(
     clearTimeout(id);
 
     if (!response.ok) {
+      if (response.status === 401) {
+        if (typeof window !== 'undefined') {
+          // Clear Zustand auth state dynamically to avoid circular dependencies
+          import('../stores/userStore').then(({ useUserStore }) => {
+            useUserStore.getState().setUser(null);
+          });
+          
+          // Silently redirect if not already on the landing page
+          if (window.location.pathname !== '/') {
+            window.location.href = '/';
+          }
+        }
+      }
+      
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.detail || errorData.message || 'API request failed');
     }
