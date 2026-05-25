@@ -6,7 +6,7 @@
 - [x] **Phase 2: AudioEngine & InnerTube** - Implement direct YouTube CDN streaming via browser HTMLAudioElement. (completed 2026-05-25)
 - [x] **Phase 3: Media Session + Gapless** - Add OS media controls and seamless track transitions. (completed 2026-05-25)
 - [x] **Phase 4: Search & Browse** - Integrate ytmusicapi for catalog search and view. (completed 2026-05-26)
-- [ ] **Phase 5: Queue & Full Player UI** - Build complete playback controls, mini player, and queue management.
+- [x] **Phase 5: Queue & Full Player UI** - Build complete playback controls, mini player, and queue management. (completed 2026-05-26)
 - [ ] **Phase 6: Home Feed + Charts + New Releases** - Provide dynamic and trending music feeds.
 - [ ] **Phase 7: Library, Likes, Playlists, Follow** - Allow users to curate their personal music library.
 - [ ] **Phase 8: Radio & Autoplay** - Generate endless playlists based on songs/artists.
@@ -92,8 +92,8 @@
 **Plans**: 4 plans
 - [x] 05-01-PLAN.md — Player Foundation & Mini-Player
 - [x] 05-02-PLAN.md — Full Player UI (Sidebar & Overlay)
-- [ ] 05-03-PLAN.md — Queue Management & DnD
-- [ ] 05-04-PLAN.md — Logic & Autoplay
+- [x] 05-03-PLAN.md — Queue Management & DnD
+- [x] 05-04-PLAN.md — Logic & Autoplay
 **UI hint**: yes
 
 ### Phase 6: Home Feed + Charts + New Releases
@@ -222,7 +222,7 @@
 | 2. AudioEngine & InnerTube | 3/3 | Complete | 2026-05-25 |
 | 3. Media Session + Gapless | 4/4 | Complete | 2026-05-25 |
 | 4. Search & Browse | 5/5 | Complete | 2026-05-26 |
-| 5. Queue & Full Player UI | 2/4 | In Progress|  |
+| 5. Queue & Full Player UI | 4/4 | Complete | 2026-05-26 |
 | 6. Home Feed + Charts + New Releases | 0/0 | Not started | - |
 | 7. Library, Likes, Playlists, Follow | 0/0 | Not started | - |
 | 8. Radio & Autoplay | 0/0 | Not started | - |
@@ -234,4 +234,3 @@
 | 14. Downloads & Offline | 0/0 | Not started | - |
 | 15. Share Feature | 0/0 | Not started | - |
 | 16. PWA & Polish | 0/0 | Not started | - |
- - |

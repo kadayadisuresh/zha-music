@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-05-25T23:06:40.596Z"
+status: Complete
+last_updated: "2026-05-26T12:00:00.000Z"
 progress:
   total_phases: 16
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 20
-  completed_plans: 18
-  percent: 90
+  completed_plans: 20
+  percent: 100
 ---
 
 # Project State
@@ -22,16 +22,16 @@ progress:
 ## 2. Current Position
 
 - **Phase:** 05-queue-player-ui
-- **Plan:** 02
-- **Status:** In Progress
+- **Plan:** 04
+- **Status:** Complete
 
 **Progress:**
-[█████████░] 90%
+[██████████] 100%
 
 ## 3. Performance Metrics
 
 - **Performance/Speed:** Target: Lightweight, fast startup, responsive API.
-- **Quality/Bugs:** None yet.
+- **Quality/Bugs:** None.
 - **Phase 1 Metrics:**
   - Plan 01: 60m
   - Plan 02: 90m
@@ -54,6 +54,9 @@ progress:
   - Plan 05: 30m
 - **Phase 5 Metrics:**
   - Plan 01: 20m
+  - Plan 02: 30m
+  - Plan 03: 60m
+  - Plan 04: 45m
 
 ## 4. Accumulated Context
 
@@ -62,19 +65,22 @@ progress:
   - FastAPI handles only data, auth, websockets.
   - No Web Audio API or Howler.js, only native HTMLAudioElement.
   - Strict UI responsiveness and Next.js 15 App Router conventions.
-  - **New:** Used dynamic import in apiClient to avoid circular dependencies between API and Store.
-  - **New:** Implemented silent redirect to landing page on 401 errors for a smoother UX.
-  - **New:** Dual-player architecture in AudioEngine for gapless playback (D-03).
-  - **New:** Backend image proxy with dominant color extraction (colorthief) and caching for adaptive backgrounds.
+  - Used dynamic import in apiClient to avoid circular dependencies between API and Store.
+  - Implemented silent redirect to landing page on 401 errors for a smoother UX.
+  - Dual-player architecture in AudioEngine for gapless playback (D-03).
+  - Backend image proxy with dominant color extraction (colorthief) and caching for adaptive backgrounds.
+  - **New:** Integrated `@dnd-kit` for performant queue reordering.
+  - **New:** Implemented Autoplay via InnerTube `upnext` endpoint.
 - **Design Patterns:**
   - Singleton AudioEngine (SSR-guarded).
   - Zustand for frontend state (playback, search, UI).
   - Cross-device sync via backend API.
   - Silent auth refresh / 401 interception.
   - Adaptive UI with 500ms smooth background transitions.
+  - Context Menu pattern with fixed positioning and viewport detection.
 - **Current Blockers:** None
 
 ## 5. Session Continuity
 
-- **Last Action:** Completed Phase 4 (Search & Browse).
-- **Next Steps:** Proceed to Phase 5 (Queue & Full Player UI).
+- **Last Action:** Completed Phase 5 (Queue & Full Player UI).
+- **Next Steps:** Proceed to Phase 6 (Home Feed + Charts + New Releases).
