@@ -91,7 +91,7 @@
   3. User can interact with playback context menus for songs.
 **Plans**: 4 plans
 - [x] 05-01-PLAN.md — Player Foundation & Mini-Player
-- [ ] 05-02-PLAN.md — Full Player UI (Sidebar & Overlay)
+- [x] 05-02-PLAN.md — Full Player UI (Sidebar & Overlay)
 - [ ] 05-03-PLAN.md — Queue Management & DnD
 - [ ] 05-04-PLAN.md — Logic & Autoplay
 **UI hint**: yes
@@ -222,7 +222,7 @@
 | 2. AudioEngine & InnerTube | 3/3 | Complete | 2026-05-25 |
 | 3. Media Session + Gapless | 4/4 | Complete | 2026-05-25 |
 | 4. Search & Browse | 5/5 | Complete | 2026-05-26 |
-| 5. Queue & Full Player UI | 1/4 | In Progress|  |
+| 5. Queue & Full Player UI | 2/4 | In Progress|  |
 | 6. Home Feed + Charts + New Releases | 0/0 | Not started | - |
 | 7. Library, Likes, Playlists, Follow | 0/0 | Not started | - |
 | 8. Radio & Autoplay | 0/0 | Not started | - |
