@@ -5,7 +5,7 @@
 - [x] **Phase 1: Foundation & Auth** - Set up the core app, database, and Google authentication flow.
 - [x] **Phase 2: AudioEngine & InnerTube** - Implement direct YouTube CDN streaming via browser HTMLAudioElement. (completed 2026-05-25)
 - [x] **Phase 3: Media Session + Gapless** - Add OS media controls and seamless track transitions. (completed 2026-05-25)
-- [ ] **Phase 4: Search & Browse** - Integrate ytmusicapi for catalog search and view.
+- [x] **Phase 4: Search & Browse** - Integrate ytmusicapi for catalog search and view. (completed 2026-05-26)
 - [ ] **Phase 5: Queue & Full Player UI** - Build complete playback controls, mini player, and queue management.
 - [ ] **Phase 6: Home Feed + Charts + New Releases** - Provide dynamic and trending music feeds.
 - [ ] **Phase 7: Library, Likes, Playlists, Follow** - Allow users to curate their personal music library.
@@ -74,11 +74,11 @@
   2. User can open an artist page and see their top songs, albums, and details.
   3. User can open an album page and view its full tracklist and release info.
 **Plans**: 5 plans
-- [ ] 04-01-PLAN.md — Data Contracts & Search API
-- [ ] 04-02-PLAN.md — Browse API & Image Proxy
-- [ ] 04-03-PLAN.md — Search UI & Interaction
-- [ ] 04-04-PLAN.md — Content Detail Pages
-- [ ] 04-05-PLAN.md — Adaptive UI Polish
+- [x] 04-01-PLAN.md — Data Contracts & Search API
+- [x] 04-02-PLAN.md — Browse API & Image Proxy
+- [x] 04-03-PLAN.md — Search UI & Interaction
+- [x] 04-04-PLAN.md — Content Detail Pages
+- [x] 04-05-PLAN.md — Adaptive UI Polish
 **UI hint**: yes
 
 ### Phase 5: Queue & Full Player UI
@@ -89,7 +89,11 @@
   1. User can view a mini-player that expands into a full Now Playing screen (desktop & mobile).
   2. User can manage the queue (reorder, remove, play next).
   3. User can interact with playback context menus for songs.
-**Plans**: TBD
+**Plans**: 4 plans
+- [x] 05-01-PLAN.md — Player Foundation & Mini-Player
+- [ ] 05-02-PLAN.md — Full Player UI (Sidebar & Overlay)
+- [ ] 05-03-PLAN.md — Queue Management & DnD
+- [ ] 05-04-PLAN.md — Logic & Autoplay
 **UI hint**: yes
 
 ### Phase 6: Home Feed + Charts + New Releases
@@ -217,8 +221,8 @@
 | 1. Foundation & Auth | 4/4 | Complete | 2026-05-25 |
 | 2. AudioEngine & InnerTube | 3/3 | Complete | 2026-05-25 |
 | 3. Media Session + Gapless | 4/4 | Complete | 2026-05-25 |
-| 4. Search & Browse | 0/5 | Not started | - |
-| 5. Queue & Full Player UI | 0/0 | Not started | - |
+| 4. Search & Browse | 5/5 | Complete | 2026-05-26 |
+| 5. Queue & Full Player UI | 1/4 | In Progress|  |
 | 6. Home Feed + Charts + New Releases | 0/0 | Not started | - |
 | 7. Library, Likes, Playlists, Follow | 0/0 | Not started | - |
 | 8. Radio & Autoplay | 0/0 | Not started | - |
@@ -230,3 +234,4 @@
 | 14. Downloads & Offline | 0/0 | Not started | - |
 | 15. Share Feature | 0/0 | Not started | - |
 | 16. PWA & Polish | 0/0 | Not started | - |
+ - |

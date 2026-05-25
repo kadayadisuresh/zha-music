@@ -56,15 +56,15 @@
 | AUTH-02 | Phase 1 | Complete |
 | AUTH-03 | Phase 1 | Complete |
 | AUTH-04 | Phase 1 | Complete |
-| AUDIO-01 | Phase 2 | Pending |
+| AUDIO-01 | Phase 2 | Complete |
 | AUDIO-02 | Phase 2 | Complete |
 | AUDIO-03 | Phase 3 | Complete |
 | AUDIO-04 | Phase 3 | Complete |
-| SEARCH-01 | Phase 4 | Pending |
-| SEARCH-02 | Phase 4 | Pending |
-| PLAYER-01 | Phase 5 | Pending |
-| PLAYER-02 | Phase 5 | Pending |
-| PLAYER-03 | Phase 5 | Pending |
+| SEARCH-01 | Phase 4 | Complete |
+| SEARCH-02 | Phase 4 | Complete |
+| PLAYER-01 | Phase 5 | Complete |
+| PLAYER-02 | Phase 5 | Complete |
+| PLAYER-03 | Phase 5 | In Progress |
 | HOME-01 | Phase 6 | Pending |
 | HOME-02 | Phase 6 | Pending |
 | HOME-03 | Phase 6 | Pending |
@@ -72,7 +72,7 @@
 | LIB-02 | Phase 7 | Pending |
 | LIB-03 | Phase 7 | Pending |
 | PLAY-01 | Phase 8 | Pending |
-| PLAY-02 | Phase 8 | Pending |
+| PLAY-02 | Phase 5 | In Progress |
 | PLAY-03 | Phase 9 | Pending |
 | PLAY-04 | Phase 10 | Pending |
 | PLAY-05 | Phase 10 | Pending |
