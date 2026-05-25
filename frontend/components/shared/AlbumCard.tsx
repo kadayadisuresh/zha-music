@@ -10,18 +10,18 @@ interface AlbumCardProps {
 }
 
 export const AlbumCard: React.FC<AlbumCardProps> = ({ album }) => {
-  const thumbnail = album.thumbnails[0]?.url || '';
+  const thumbnail = album.thumbnail || '';
 
   return (
     <Link 
       href={`/album/${album.id}`}
-      className="bg-zinc-900/40 p-3 rounded-lg hover:bg-zinc-800/60 transition-colors group"
+      className="bg-zinc-900/40 p-3 rounded-lg hover:bg-zinc-800/60 transition-colors group block"
     >
       <div className="relative aspect-square w-full mb-3 shadow-lg">
         {thumbnail ? (
           <Image 
             src={`/api/proxy/image?url=${encodeURIComponent(thumbnail)}`}
-            alt={album.name}
+            alt={album.title}
             fill
             className="object-cover rounded-md shadow-lg"
           />
@@ -34,7 +34,7 @@ export const AlbumCard: React.FC<AlbumCardProps> = ({ album }) => {
           </svg>
         </div>
       </div>
-      <h4 className="text-zinc-100 font-bold truncate text-sm">{album.name}</h4>
+      <h4 className="text-zinc-100 font-bold truncate text-sm">{album.title}</h4>
       <p className="text-zinc-400 text-xs truncate">
         {album.year ? `${album.year} • ` : ''}{album.artists?.map(a => a.name).join(', ')}
       </p>

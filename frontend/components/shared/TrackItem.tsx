@@ -7,16 +7,29 @@ import Image from 'next/image';
 interface TrackItemProps {
   track: Track;
   onClick?: () => void;
+  index?: number;
 }
 
-export const TrackItem: React.FC<TrackItemProps> = ({ track, onClick }) => {
-  const thumbnail = track.thumbnails[0]?.url || '';
+function formatDuration(seconds: number = 0): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+export const TrackItem: React.FC<TrackItemProps> = ({ track, onClick, index }) => {
+  const thumbnail = track.thumbnail || '';
 
   return (
     <div 
       className="flex items-center gap-4 p-2 rounded-md hover:bg-zinc-800/50 group cursor-pointer transition-colors"
       onClick={onClick}
     >
+      {index !== undefined && (
+        <div className="w-8 text-right text-zinc-500 font-medium mr-1 group-hover:hidden">
+          {index}
+        </div>
+      )}
+      
       <div className="relative w-12 h-12 flex-shrink-0">
         {thumbnail ? (
           <Image 
@@ -38,11 +51,11 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, onClick }) => {
         <h4 className="text-zinc-100 font-medium truncate">{track.title}</h4>
         <p className="text-zinc-400 text-sm truncate">
           {track.artists.map(a => a.name).join(', ')}
-          {track.album && ` • ${track.album.name}`}
+          {track.album?.name && ` • ${track.album.name}`}
         </p>
       </div>
       <div className="text-zinc-500 text-sm">
-        {track.duration_text}
+        {formatDuration(track.duration)}
       </div>
     </div>
   );

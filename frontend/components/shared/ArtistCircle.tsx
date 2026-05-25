@@ -1,21 +1,21 @@
 'use client';
 
 import React from 'react';
-import { Artist } from '@/lib/api/mappers';
+import { SearchArtist } from '@/lib/api/mappers';
 import Image from 'next/image';
 import Link from 'next/link';
 
 interface ArtistCircleProps {
-  artist: Artist;
+  artist: SearchArtist;
 }
 
 export const ArtistCircle: React.FC<ArtistCircleProps> = ({ artist }) => {
-  const thumbnail = artist.thumbnails[0]?.url || '';
+  const thumbnail = artist.thumbnail || '';
 
   return (
     <Link 
       href={`/artist/${artist.id}`}
-      className="flex flex-col items-center p-3 rounded-lg hover:bg-zinc-800/60 transition-colors group text-center"
+      className="flex flex-col items-center p-3 rounded-lg hover:bg-zinc-800/60 transition-colors group text-center block"
     >
       <div className="relative aspect-square w-full mb-3 shadow-xl">
         {thumbnail ? (
