@@ -41,6 +41,11 @@ interface PlaybackState {
   setRepeatMode: (mode: 'off' | 'one' | 'all') => void;
   toggleRepeatMode: () => void;
   toggleShuffle: () => void;
+  reorderQueue: (oldIndex: number, newIndex: number) => void;
+  removeFromQueue: (index: number) => void;
+  clearQueue: () => void;
+  addNext: (track: Track) => void;
+  addToQueue: (track: Track) => void;
   
   // Helpers
   next: () => void;
@@ -95,41 +100,109 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
   },
 
   toggleShuffle: () => {
-    const { shuffleEnabled, queue, originalQueue, currentTrack } = get();
-    const newShuffleEnabled = !shuffleEnabled;
-    
-    if (newShuffleEnabled) {
-      // Shuffle the queue but keep current track at the top or at its current relative position?
-      // Usually, YTM shuffles the REMAINING queue or shuffles all and moves current to top.
-      // Let's shuffle all and move current to top for simplicity and better "shuffle" feel.
-      const shuffled = [...originalQueue];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      
-      if (currentTrack) {
-        const currentIndex = shuffled.findIndex(t => t.id === currentTrack.id);
-        if (currentIndex !== -1) {
-          const [track] = shuffled.splice(currentIndex, 1);
-          shuffled.unshift(track);
-        }
-      }
-      
-      set({ 
-        shuffleEnabled: newShuffleEnabled, 
-        queue: shuffled,
-        queueIndex: currentTrack ? 0 : -1
-      });
+    const { shuffleEnabled } = get();
+    if (!shuffleEnabled) {
+      get().shuffleQueue();
     } else {
-      // Unshuffle: restore original queue and find current track index
-      const newIndex = currentTrack ? originalQueue.findIndex(t => t.id === currentTrack.id) : -1;
-      set({ 
-        shuffleEnabled: newShuffleEnabled, 
-        queue: [...originalQueue],
-        queueIndex: newIndex
-      });
+      get().unshuffleQueue();
     }
+  },
+
+  shuffleQueue: () => {
+    const { queue, currentTrack } = get();
+    const shuffled = [...queue];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    
+    if (currentTrack) {
+      const currentIndex = shuffled.findIndex(t => t.id === currentTrack.id);
+      if (currentIndex !== -1) {
+        const [track] = shuffled.splice(currentIndex, 1);
+        shuffled.unshift(track);
+      }
+    }
+    
+    set({ 
+      shuffleEnabled: true, 
+      queue: shuffled,
+      queueIndex: currentTrack ? 0 : -1
+    });
+  },
+
+  unshuffleQueue: () => {
+    const { originalQueue, currentTrack } = get();
+    const newIndex = currentTrack ? originalQueue.findIndex(t => t.id === currentTrack.id) : -1;
+    set({ 
+      shuffleEnabled: false, 
+      queue: [...originalQueue],
+      queueIndex: newIndex
+    });
+  },
+
+  reorderQueue: (oldIndex, newIndex) => {
+    const { queue, queueIndex } = get();
+    const newQueue = [...queue];
+    const [movedItem] = newQueue.splice(oldIndex, 1);
+    newQueue.splice(newIndex, 0, movedItem);
+    
+    let newQueueIndex = queueIndex;
+    if (queueIndex === oldIndex) {
+      newQueueIndex = newIndex;
+    } else if (oldIndex < queueIndex && newIndex >= queueIndex) {
+      newQueueIndex--;
+    } else if (oldIndex > queueIndex && newIndex <= queueIndex) {
+      newQueueIndex++;
+    }
+    
+    set({ queue: newQueue, queueIndex: newQueueIndex });
+  },
+
+  removeFromQueue: (index) => {
+    const { queue, queueIndex } = get();
+    const newQueue = [...queue];
+    newQueue.splice(index, 1);
+    
+    let newQueueIndex = queueIndex;
+    if (index < queueIndex) {
+      newQueueIndex--;
+    } else if (index === queueIndex) {
+      if (newQueue.length > 0) {
+        const nextIdx = Math.min(index, newQueue.length - 1);
+        newQueueIndex = nextIdx;
+        get().playTrack(newQueue[nextIdx]);
+      } else {
+        newQueueIndex = -1;
+        set({ currentTrack: null, isPlaying: false });
+      }
+    }
+    
+    set({ queue: newQueue, queueIndex: newQueueIndex });
+  },
+
+  clearQueue: () => {
+    set({ queue: [], originalQueue: [], queueIndex: -1, currentTrack: null, isPlaying: false });
+  },
+
+  addNext: (track) => {
+    const { queue, queueIndex, originalQueue, currentTrack } = get();
+    const newQueue = [...queue];
+    newQueue.splice(queueIndex + 1, 0, track);
+    
+    const newOriginal = [...originalQueue];
+    const originalIndex = currentTrack ? originalQueue.findIndex(t => t.id === currentTrack.id) : -1;
+    newOriginal.splice(originalIndex + 1, 0, track);
+
+    set({ queue: newQueue, originalQueue: newOriginal });
+  },
+
+  addToQueue: (track) => {
+    const { queue, originalQueue } = get();
+    set({ 
+      queue: [...queue, track],
+      originalQueue: [...originalQueue, track]
+    });
   },
 
   next: () => {
