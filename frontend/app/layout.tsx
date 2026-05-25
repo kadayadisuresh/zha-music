@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppBackground } from "@/components/layout/AppBackground";
+import { MiniPlayer } from "@/components/player/MiniPlayer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,7 +30,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col antialiased bg-black text-[#fffff0]`}
       >
         <AppBackground />
-        {children}
+        <main className="flex-1 pb-[72px]">
+          {children}
+        </main>
+        <MiniPlayer />
       </body>
     </html>
   );
