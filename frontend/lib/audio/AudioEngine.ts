@@ -124,6 +124,26 @@ class AudioEngine {
     this.activePlayer.play();
   }
 
+  async prepareNext(track: Track) {
+    usePlaybackStore.getState().setNextTrack(track);
+    
+    try {
+      const response = await fetch(`/api/innertube/stream?video_id=${track.id}`);
+      if (!response.ok) throw new Error('Failed to fetch stream URL');
+      
+      const data = await response.json();
+      if (!data.url) throw new Error('No stream URL returned');
+
+      const inactive = this.inactivePlayer;
+      inactive.src = data.url;
+      inactive.load();
+      inactive.pause();
+      console.log('Prepared next track:', track.title);
+    } catch (error) {
+      console.error('Failed to prepare next track:', error);
+    }
+  }
+
   pause() {
     this.activePlayer.pause();
   }
