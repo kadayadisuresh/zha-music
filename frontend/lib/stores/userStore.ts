@@ -29,8 +29,9 @@ export const useUserStore = create<UserState>((set) => ({
     try {
       const user = await apiClient<User>('/auth/me');
       set({ user, isLoading: false });
-    } catch (error: any) {
-      set({ user: null, error: error.message || 'Session invalid', isLoading: false });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Session invalid';
+      set({ user: null, error: errorMessage, isLoading: false });
     }
   },
   
@@ -39,8 +40,9 @@ export const useUserStore = create<UserState>((set) => ({
     try {
       await apiClient('/auth/session', { method: 'DELETE' });
       set({ user: null, isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message || 'Logout failed', isLoading: false });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Logout failed';
+      set({ error: errorMessage, isLoading: false });
     }
   },
 }));
