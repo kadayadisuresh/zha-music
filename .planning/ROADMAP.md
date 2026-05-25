@@ -46,7 +46,7 @@
   2. Audio starts playing in the browser with play/pause/seek controls.
   3. Errors like 403 or stream unavailability automatically retry or skip gracefully.
 **Plans**: 3 plans
-- [ ] 02-01-PLAN.md — InnerTube Foundation & PO Token
+- [x] 02-01-PLAN.md — InnerTube Foundation & PO Token
 - [ ] 02-02-PLAN.md — Audio Proxy (FastAPI)
 - [ ] 02-03-PLAN.md — Playback State & AudioEngine
 
@@ -206,7 +206,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Auth | 4/4 | Complete | 2026-05-25 |
-| 2. AudioEngine & InnerTube | 0/3 | In progress | - |
+| 2. AudioEngine & InnerTube | 1/3 | In Progress|  |
 | 3. Media Session + Gapless | 0/0 | Not started | - |
 | 4. Search & Browse | 0/0 | Not started | - |
 | 5. Queue & Full Player UI | 0/0 | Not started | - |

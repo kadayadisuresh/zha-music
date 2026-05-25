@@ -57,7 +57,7 @@
 | AUTH-03 | Phase 1 | Complete |
 | AUTH-04 | Phase 1 | Complete |
 | AUDIO-01 | Phase 2 | Pending |
-| AUDIO-02 | Phase 2 | Pending |
+| AUDIO-02 | Phase 2 | Complete |
 | AUDIO-03 | Phase 3 | Pending |
 | AUDIO-04 | Phase 3 | Pending |
 | SEARCH-01 | Phase 4 | Pending |
