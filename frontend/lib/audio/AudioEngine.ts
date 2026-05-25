@@ -1,4 +1,5 @@
 import { usePlaybackStore, Track } from '../stores/playbackStore';
+import { mediaSessionManager } from './MediaSessionManager';
 
 declare global {
   var __audioEngine: AudioEngine | undefined;
@@ -21,6 +22,18 @@ class AudioEngine {
       player.crossOrigin = 'anonymous';
       this.setupEventListeners(player, idx);
     });
+
+    this.setupMediaSession();
+  }
+
+  private setupMediaSession() {
+    mediaSessionManager.setActionHandlers({
+      play: () => this.activePlayer.play(),
+      pause: () => this.pause(),
+      next: () => console.log('MediaSession: Next track'),
+      prev: () => console.log('MediaSession: Prev track'),
+      seek: (time) => this.seek(time)
+    });
   }
 
   private get activePlayer() {
@@ -35,18 +48,21 @@ class AudioEngine {
     player.addEventListener('play', () => {
       if (this.activeIdx === idx) {
         usePlaybackStore.getState().setPlaying(true);
+        mediaSessionManager.updatePlaybackState('playing');
       }
     });
 
     player.addEventListener('pause', () => {
       if (this.activeIdx === idx) {
         usePlaybackStore.getState().setPlaying(false);
+        mediaSessionManager.updatePlaybackState('paused');
       }
     });
 
     player.addEventListener('timeupdate', () => {
       if (this.activeIdx === idx) {
         usePlaybackStore.getState().setCurrentTime(player.currentTime);
+        mediaSessionManager.updatePositionState(player.duration, player.currentTime);
       }
     });
 
@@ -54,6 +70,7 @@ class AudioEngine {
       if (this.activeIdx === idx) {
         usePlaybackStore.getState().setDuration(player.duration);
         usePlaybackStore.getState().setIsLoading(false);
+        mediaSessionManager.updatePositionState(player.duration, player.currentTime);
       }
     });
 
@@ -66,6 +83,7 @@ class AudioEngine {
     player.addEventListener('playing', () => {
       if (this.activeIdx === idx) {
         usePlaybackStore.getState().setIsLoading(false);
+        mediaSessionManager.updatePlaybackState('playing');
       }
     });
 
@@ -93,11 +111,9 @@ class AudioEngine {
     this.currentVideoId = videoId;
     this.isProxyFallback = false;
     
-    if (trackInfo) {
-      usePlaybackStore.getState().setTrack(trackInfo);
-    } else {
-      usePlaybackStore.getState().setTrack({ id: videoId, title: 'Loading...', artist: '' });
-    }
+    const track = trackInfo || { id: videoId, title: 'Loading...', artist: '' };
+    usePlaybackStore.getState().setTrack(track);
+    mediaSessionManager.updateMetadata(track);
     
     usePlaybackStore.getState().setIsLoading(true);
 
