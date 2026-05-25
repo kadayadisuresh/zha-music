@@ -37,7 +37,11 @@ export default function LandingPage() {
     if (isPlaying) {
       audioEngine.pause();
     } else {
-      audioEngine.play(testVideoId, { id: testVideoId, title: "Test Track", artist: "Artist" });
+      audioEngine.play(testVideoId, { 
+        id: testVideoId, 
+        title: "Test Track", 
+        artists: [{ name: "Artist" }] 
+      });
     }
   };
 

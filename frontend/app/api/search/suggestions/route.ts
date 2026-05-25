@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     
     // Flatten suggestions from all sections
     const flatSuggestions = suggestions.flatMap(section => 
-      section.contents.map(item => (typeof item.text === 'string' ? item.text : (item as any).text?.text))
+      section.contents.map(item => (typeof (item as any).text === 'string' ? (item as any).text : (item as any).text?.text))
     ).filter(Boolean);
 
     return NextResponse.json(flatSuggestions);

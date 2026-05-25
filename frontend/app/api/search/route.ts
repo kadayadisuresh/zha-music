@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     // Fallback: If any category is empty, or to find items in other shelves (like Top Result / MusicCardShelf)
     // iterate through all contents.
     const allItems: any[] = [];
-    const sourceContents = results.sections || (results as any).contents || [];
+    const sourceContents = (results as any).sections || (results as any).contents || [];
     
     sourceContents.forEach((section: any) => {
       if (section.contents) {

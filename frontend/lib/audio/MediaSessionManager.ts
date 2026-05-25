@@ -12,15 +12,15 @@ class MediaSessionManager {
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title,
-      artist: track.artist,
-      album: 'ZHA Better',
-      artwork: track.cover ? [
-        { src: track.cover, sizes: '96x96', type: 'image/png' },
-        { src: track.cover, sizes: '128x128', type: 'image/png' },
-        { src: track.cover, sizes: '192x192', type: 'image/png' },
-        { src: track.cover, sizes: '256x256', type: 'image/png' },
-        { src: track.cover, sizes: '384x384', type: 'image/png' },
-        { src: track.cover, sizes: '512x512', type: 'image/png' },
+      artist: track.artists.map(a => a.name).join(', '),
+      album: track.album?.name || 'ZHA Better',
+      artwork: track.thumbnail ? [
+        { src: track.thumbnail, sizes: '96x96', type: 'image/png' },
+        { src: track.thumbnail, sizes: '128x128', type: 'image/png' },
+        { src: track.thumbnail, sizes: '192x192', type: 'image/png' },
+        { src: track.thumbnail, sizes: '256x256', type: 'image/png' },
+        { src: track.thumbnail, sizes: '384x384', type: 'image/png' },
+        { src: track.thumbnail, sizes: '512x512', type: 'image/png' },
       ] : []
     });
   }

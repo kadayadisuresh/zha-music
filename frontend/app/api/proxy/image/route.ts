@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
-import ColorThief from 'colorthief';
+const ColorThief = require('colorthief');
 
 const ALLOWED_HOSTS = [
   'lh3.googleusercontent.com',

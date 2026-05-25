@@ -235,7 +235,7 @@ class AudioEngine {
     this.prefetchTriggered = false;
     this.transitionTriggered = false;
     
-    const track = trackInfo || { id: videoId, title: 'Loading...', artist: '' };
+    const track = trackInfo || { id: videoId, title: 'Loading...', artists: [{ name: 'Unknown' }] };
     usePlaybackStore.getState().setTrack(track);
     mediaSessionManager.updateMetadata(track);
     
