@@ -59,7 +59,7 @@
   2. Track metadata (title, artist, artwork) is displayed correctly in OS media controls.
   3. Songs transition directly from one to the next without any silence (gapless playback).
 **Plans**: 4 plans
-- [ ] 03-01-PLAN.md — Playback Store & Dual Buffer Foundation
+- [x] 03-01-PLAN.md — Playback Store & Dual Buffer Foundation
 - [ ] 03-02-PLAN.md — Media Session API Integration
 - [ ] 03-03-PLAN.md — Transition Logic & Adaptive Pre-fetch
 - [ ] 03-04-PLAN.md — Micro-Crossfade Implementation
