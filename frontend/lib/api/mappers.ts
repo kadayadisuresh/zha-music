@@ -44,12 +44,37 @@ export const SearchResultSchema = z.object({
   artists: z.array(SearchArtistSchema),
 });
 
+export const ArtistDetailsSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  thumbnail: z.string().optional(),
+  header_thumbnail: z.string().optional(),
+  sections: z.array(z.object({
+    title: z.string(),
+    type: z.string(),
+    items: z.array(z.any()),
+  })),
+});
+
+export const AlbumDetailsSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  artists: z.array(ArtistSchema),
+  year: z.string().optional(),
+  thumbnail: z.string().optional(),
+  tracks: z.array(TrackSchema),
+  description: z.string().optional(),
+});
+
 export type Thumbnail = z.infer<typeof ThumbnailSchema>;
 export type Artist = z.infer<typeof ArtistSchema>;
 export type Track = z.infer<typeof TrackSchema>;
 export type Album = z.infer<typeof AlbumSchema>;
 export type SearchArtist = z.infer<typeof SearchArtistSchema>;
 export type SearchResult = z.infer<typeof SearchResultSchema>;
+export type ArtistDetails = z.infer<typeof ArtistDetailsSchema>;
+export type AlbumDetails = z.infer<typeof AlbumDetailsSchema>;
 
 export function mapThumbnail(thumbnail: any): string | undefined {
   if (!thumbnail) return undefined;
@@ -109,5 +134,41 @@ export function mapSearchArtist(item: any): SearchArtist {
     id: item.id || item.browse_id,
     name,
     thumbnail: mapThumbnail(item.thumbnail || item.thumbnails),
+  };
+}
+
+export function mapArtistDetails(artist: any): ArtistDetails {
+  const sections = (artist.sections || []).map((section: any) => ({
+    title: section.title?.text || section.type || 'Untitled',
+    type: section.type || 'unknown',
+    items: (section.contents || []).map((item: any) => {
+      if (item.type === 'MusicResponsiveListItem') {
+        if (item.item_type === 'song' || item.item_type === 'video') return mapTrack(item);
+        if (item.item_type === 'album') return mapAlbum(item);
+        if (item.item_type === 'artist') return mapSearchArtist(item);
+      }
+      return item; // Fallback
+    }),
+  }));
+
+  return {
+    id: artist.header?.id || '',
+    name: artist.header?.name?.text || '',
+    description: artist.header?.description?.text,
+    thumbnail: mapThumbnail(artist.header?.thumbnail),
+    header_thumbnail: mapThumbnail(artist.header?.header_thumbnail),
+    sections,
+  };
+}
+
+export function mapAlbumDetails(album: any): AlbumDetails {
+  return {
+    id: album.header?.id || '',
+    title: album.header?.title?.text || '',
+    artists: (album.header?.artists || []).map(mapArtist),
+    year: album.header?.year?.text || album.header?.year,
+    thumbnail: mapThumbnail(album.header?.thumbnail),
+    tracks: (album.contents || []).map(mapTrack),
+    description: album.description,
   };
 }
