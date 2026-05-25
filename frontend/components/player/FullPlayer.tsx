@@ -10,11 +10,13 @@ import { ProgressBar } from "./ProgressBar";
 import { useAdaptiveColor } from "@/lib/hooks/useAdaptiveColor";
 import { AdaptiveBackground } from "@/components/ui/AdaptiveBackground";
 import { Button } from "@/components/ui/Button";
-import { formatTime } from "@/lib/utils";
+import { formatTime, cn } from "@/lib/utils";
+import { QueueList } from "../queue/QueueList";
 
 export const FullPlayer: React.FC = () => {
   const { currentTrack, currentTime, duration } = usePlaybackStore();
   const { isPlayerExpanded, setPlayerExpanded } = useUIStore();
+  const [activeTab, setActiveTab] = React.useState<'up-next' | 'lyrics' | 'related'>('up-next');
   const color = useAdaptiveColor(currentTrack?.thumbnail);
 
   if (!currentTrack) return null;
@@ -72,40 +74,84 @@ export const FullPlayer: React.FC = () => {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-8 gap-6 md:gap-8 overflow-y-auto">
-              {/* Album Art */}
-              <motion.div 
-                layoutId="player-thumb"
-                className="relative aspect-square w-full max-w-[320px] md:max-w-full shadow-2xl shadow-black/50"
-              >
-                <img 
-                  src={currentTrack.thumbnail || '/placeholder-album.png'} 
-                  alt={currentTrack.title}
-                  className="w-full h-full object-cover rounded-lg"
-                />
-              </motion.div>
+            <div className="flex-1 overflow-y-auto">
+              <AnimatePresence mode="wait">
+                {activeTab === 'up-next' ? (
+                  <motion.div
+                    key="queue"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="p-6 md:p-8"
+                  >
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold text-white">Up Next</h3>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-xs text-primary font-bold uppercase tracking-wider"
+                        onClick={() => {/* TODO: Implement Clear Queue */}}
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                    <QueueList />
+                  </motion.div>
+                ) : activeTab === 'lyrics' ? (
+                  <motion.div
+                    key="lyrics"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="flex flex-col items-center justify-center h-full p-8 text-white/40"
+                  >
+                    <p className="text-center">Lyrics are not available for this track yet.</p>
+                  </motion.div>
+                ) : (
+                  /* Now Playing (Default/Related placeholder) */
+                  <motion.div
+                    key="now-playing"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex flex-col items-center justify-center p-6 md:p-8 gap-6 md:gap-8 h-full"
+                  >
+                    {/* Album Art */}
+                    <motion.div 
+                      layoutId="player-thumb"
+                      className="relative aspect-square w-full max-w-[320px] md:max-w-full shadow-2xl shadow-black/50"
+                    >
+                      <img 
+                        src={currentTrack.thumbnail || '/placeholder-album.png'} 
+                        alt={currentTrack.title}
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                    </motion.div>
 
-              {/* Metadata & Actions */}
-              <div className="w-full flex flex-col gap-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h1 className="text-xl md:text-2xl font-bold text-white truncate">
-                      {currentTrack.title}
-                    </h1>
-                    <p className="text-base md:text-lg text-white/70 truncate">
-                      {currentTrack.artists.map(a => a.name).join(', ')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white p-2">
-                      <ThumbsDown size={20} />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white p-2">
-                      <ThumbsUp size={20} />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+                    {/* Metadata & Actions */}
+                    <div className="w-full flex flex-col gap-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h1 className="text-xl md:text-2xl font-bold text-white truncate">
+                            {currentTrack.title}
+                          </h1>
+                          <p className="text-base md:text-lg text-white/70 truncate">
+                            {currentTrack.artists.map(a => a.name).join(', ')}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white p-2">
+                            <ThumbsDown size={20} />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white p-2">
+                            <ThumbsUp size={20} />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Controls & Progress Area */}
@@ -122,9 +168,24 @@ export const FullPlayer: React.FC = () => {
               
               {/* Bottom Navigation Tabs */}
               <div className="flex items-center justify-around text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-t border-white/5 pt-4">
-                <button className="text-white">Up Next</button>
-                <button className="hover:text-white transition-colors">Lyrics</button>
-                <button className="hover:text-white transition-colors">Related</button>
+                <button 
+                  onClick={() => setActiveTab('up-next')}
+                  className={cn(activeTab === 'up-next' ? "text-white" : "hover:text-white transition-colors")}
+                >
+                  Up Next
+                </button>
+                <button 
+                  onClick={() => setActiveTab('lyrics')}
+                  className={cn(activeTab === 'lyrics' ? "text-white" : "hover:text-white transition-colors")}
+                >
+                  Lyrics
+                </button>
+                <button 
+                  onClick={() => setActiveTab('related')}
+                  className={cn(activeTab === 'related' ? "text-white" : "hover:text-white transition-colors")}
+                >
+                  Related
+                </button>
               </div>
             </div>
           </motion.div>
