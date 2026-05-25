@@ -73,7 +73,12 @@
   1. User can search for songs, artists, albums, and playlists, and see results correctly.
   2. User can open an artist page and see their top songs, albums, and details.
   3. User can open an album page and view its full tracklist and release info.
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 04-01-PLAN.md — Data Contracts & Search API
+- [ ] 04-02-PLAN.md — Browse API & Image Proxy
+- [ ] 04-03-PLAN.md — Search UI & Interaction
+- [ ] 04-04-PLAN.md — Content Detail Pages
+- [ ] 04-05-PLAN.md — Adaptive UI Polish
 **UI hint**: yes
 
 ### Phase 5: Queue & Full Player UI
@@ -212,7 +217,7 @@
 | 1. Foundation & Auth | 4/4 | Complete | 2026-05-25 |
 | 2. AudioEngine & InnerTube | 3/3 | Complete | 2026-05-25 |
 | 3. Media Session + Gapless | 4/4 | Complete | 2026-05-25 |
-| 4. Search & Browse | 0/0 | Not started | - |
+| 4. Search & Browse | 0/5 | Not started | - |
 | 5. Queue & Full Player UI | 0/0 | Not started | - |
 | 6. Home Feed + Charts + New Releases | 0/0 | Not started | - |
 | 7. Library, Likes, Playlists, Follow | 0/0 | Not started | - |
