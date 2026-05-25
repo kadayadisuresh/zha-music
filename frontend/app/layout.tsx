@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppBackground } from "@/components/layout/AppBackground";
 import { MiniPlayer } from "@/components/player/MiniPlayer";
+import { FullPlayer } from "@/components/player/FullPlayer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,6 +35,7 @@ export default function RootLayout({
           {children}
         </main>
         <MiniPlayer />
+        <FullPlayer />
       </body>
     </html>
   );
