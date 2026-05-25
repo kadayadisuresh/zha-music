@@ -39,6 +39,7 @@ interface PlaybackState {
   setIsLoading: (isLoading: boolean) => void;
   setNetworkType: (type: string) => void;
   setRepeatMode: (mode: 'off' | 'one' | 'all') => void;
+  toggleRepeatMode: () => void;
   toggleShuffle: () => void;
   
   // Helpers
@@ -85,6 +86,13 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => ({
   setIsLoading: (isLoading) => set({ isLoading }),
   setNetworkType: (networkType) => set({ networkType }),
   setRepeatMode: (repeatMode) => set({ repeatMode }),
+
+  toggleRepeatMode: () => {
+    const { repeatMode } = get();
+    const modes: ('off' | 'all' | 'one')[] = ['off', 'all', 'one'];
+    const nextMode = modes[(modes.indexOf(repeatMode) + 1) % modes.length];
+    set({ repeatMode: nextMode });
+  },
 
   toggleShuffle: () => {
     const { shuffleEnabled, queue, originalQueue, currentTrack } = get();
