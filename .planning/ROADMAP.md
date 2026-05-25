@@ -3,7 +3,7 @@
 ## Phases
 
 - [x] **Phase 1: Foundation & Auth** - Set up the core app, database, and Google authentication flow.
-- [ ] **Phase 2: AudioEngine & InnerTube** - Implement direct YouTube CDN streaming via browser HTMLAudioElement.
+- [x] **Phase 2: AudioEngine & InnerTube** - Implement direct YouTube CDN streaming via browser HTMLAudioElement. (completed 2026-05-25)
 - [ ] **Phase 3: Media Session + Gapless** - Add OS media controls and seamless track transitions.
 - [ ] **Phase 4: Search & Browse** - Integrate ytmusicapi for catalog search and view.
 - [ ] **Phase 5: Queue & Full Player UI** - Build complete playback controls, mini player, and queue management.
@@ -47,8 +47,8 @@
   3. Errors like 403 or stream unavailability automatically retry or skip gracefully.
 **Plans**: 3 plans
 - [x] 02-01-PLAN.md — InnerTube Foundation & PO Token
-- [ ] 02-02-PLAN.md — Audio Proxy (FastAPI)
-- [ ] 02-03-PLAN.md — Playback State & AudioEngine
+- [x] 02-02-PLAN.md — Audio Proxy (FastAPI)
+- [x] 02-03-PLAN.md — Playback State & AudioEngine
 
 ### Phase 3: Media Session + Gapless
 **Goal**: Playback integrates with OS media controls and transitions between songs seamlessly.
@@ -58,7 +58,11 @@
   1. User can control playback via device lock screen or OS media keys.
   2. Track metadata (title, artist, artwork) is displayed correctly in OS media controls.
   3. Songs transition directly from one to the next without any silence (gapless playback).
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 03-01-PLAN.md — Playback Store & Dual Buffer Foundation
+- [ ] 03-02-PLAN.md — Media Session API Integration
+- [ ] 03-03-PLAN.md — Transition Logic & Adaptive Pre-fetch
+- [ ] 03-04-PLAN.md — Micro-Crossfade Implementation
 **UI hint**: yes
 
 ### Phase 4: Search & Browse
@@ -206,8 +210,8 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Auth | 4/4 | Complete | 2026-05-25 |
-| 2. AudioEngine & InnerTube | 1/3 | In Progress|  |
-| 3. Media Session + Gapless | 0/0 | Not started | - |
+| 2. AudioEngine & InnerTube | 3/3 | Complete   | 2026-05-25 |
+| 3. Media Session + Gapless | 0/4 | Not started | - |
 | 4. Search & Browse | 0/0 | Not started | - |
 | 5. Queue & Full Player UI | 0/0 | Not started | - |
 | 6. Home Feed + Charts + New Releases | 0/0 | Not started | - |
