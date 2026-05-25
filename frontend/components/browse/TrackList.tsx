@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Track } from '@/lib/api/mappers';
 import { usePlaybackStore } from '@/lib/stores/playbackStore';
+import { TrackContextMenu } from '../shared/TrackContextMenu';
 
 interface TrackListProps {
   tracks: Track[];
@@ -10,10 +11,20 @@ interface TrackListProps {
 
 export function TrackList({ tracks }: TrackListProps) {
   const { currentTrack, playTrack, setQueue } = usePlaybackStore();
+  const [contextMenu, setContextMenu] = useState<{ track: any; x: number; y: number } | null>(null);
 
   const handlePlay = (track: Track, index: number) => {
     setQueue(tracks);
     playTrack(track);
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, track: Track) => {
+    e.preventDefault();
+    setContextMenu({
+      track,
+      x: e.clientX,
+      y: e.clientY,
+    });
   };
 
   const formatDuration = (seconds?: number) => {
@@ -39,6 +50,7 @@ export function TrackList({ tracks }: TrackListProps) {
             <div 
               key={track.id}
               onClick={() => handlePlay(track, index)}
+              onContextMenu={(e) => handleContextMenu(e, track)}
               className={`flex items-center px-4 py-3 hover:bg-zinc-800/50 rounded-md cursor-pointer group transition-colors ${isActive ? 'bg-zinc-800/80 text-blue-400' : 'text-zinc-200'}`}
             >
               <div className="w-10 text-center text-zinc-500 group-hover:hidden">
@@ -72,6 +84,14 @@ export function TrackList({ tracks }: TrackListProps) {
           );
         })}
       </div>
+
+      {contextMenu && (
+        <TrackContextMenu
+          track={contextMenu.track}
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }
