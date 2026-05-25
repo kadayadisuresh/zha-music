@@ -5,53 +5,75 @@ declare global {
 }
 
 class AudioEngine {
-  private audio: HTMLAudioElement;
+  private players: HTMLAudioElement[];
+  private activeIdx: number = 0;
   private currentVideoId: string | null = null;
   private isProxyFallback: boolean = false;
 
   constructor() {
     if (typeof window === 'undefined') {
-      this.audio = {} as HTMLAudioElement; // Stub for SSR
+      this.players = [{} as HTMLAudioElement, {} as HTMLAudioElement]; // Stub for SSR
       return;
     }
 
-    this.audio = new Audio();
-    this.setupEventListeners();
+    this.players = [new Audio(), new Audio()];
+    this.players.forEach((player, idx) => {
+      player.crossOrigin = 'anonymous';
+      this.setupEventListeners(player, idx);
+    });
   }
 
-  private setupEventListeners() {
-    this.audio.addEventListener('play', () => {
-      usePlaybackStore.getState().setPlaying(true);
+  private get activePlayer() {
+    return this.players[this.activeIdx];
+  }
+
+  private get inactivePlayer() {
+    return this.players[1 - this.activeIdx];
+  }
+
+  private setupEventListeners(player: HTMLAudioElement, idx: number) {
+    player.addEventListener('play', () => {
+      if (this.activeIdx === idx) {
+        usePlaybackStore.getState().setPlaying(true);
+      }
     });
 
-    this.audio.addEventListener('pause', () => {
-      usePlaybackStore.getState().setPlaying(false);
+    player.addEventListener('pause', () => {
+      if (this.activeIdx === idx) {
+        usePlaybackStore.getState().setPlaying(false);
+      }
     });
 
-    this.audio.addEventListener('timeupdate', () => {
-      usePlaybackStore.getState().setCurrentTime(this.audio.currentTime);
+    player.addEventListener('timeupdate', () => {
+      if (this.activeIdx === idx) {
+        usePlaybackStore.getState().setCurrentTime(player.currentTime);
+      }
     });
 
-    this.audio.addEventListener('loadedmetadata', () => {
-      usePlaybackStore.getState().setDuration(this.audio.duration);
-      usePlaybackStore.getState().setIsLoading(false);
+    player.addEventListener('loadedmetadata', () => {
+      if (this.activeIdx === idx) {
+        usePlaybackStore.getState().setDuration(player.duration);
+        usePlaybackStore.getState().setIsLoading(false);
+      }
     });
 
-    this.audio.addEventListener('waiting', () => {
-      usePlaybackStore.getState().setIsLoading(true);
+    player.addEventListener('waiting', () => {
+      if (this.activeIdx === idx) {
+        usePlaybackStore.getState().setIsLoading(true);
+      }
     });
 
-    this.audio.addEventListener('playing', () => {
-      usePlaybackStore.getState().setIsLoading(false);
+    player.addEventListener('playing', () => {
+      if (this.activeIdx === idx) {
+        usePlaybackStore.getState().setIsLoading(false);
+      }
     });
 
-    this.audio.addEventListener('error', (e) => {
+    player.addEventListener('error', (e) => {
+      if (this.activeIdx !== idx) return;
+
       console.error('Audio element error:', e);
-      const error = this.audio.error;
       
-      // If we haven't tried proxy yet and it's a 403-like error (MEDIA_ERR_SRC_NOT_SUPPORTED or MEDIA_ERR_NETWORK)
-      // or if we detect it's a 403 from the network tab (which we can't easily do from JS, 
-      // but we can try fallback on any significant error)
       if (!this.isProxyFallback && this.currentVideoId) {
         console.log('Attempting proxy fallback for video:', this.currentVideoId);
         this.playWithProxy(this.currentVideoId);
@@ -63,8 +85,8 @@ class AudioEngine {
   }
 
   async play(videoId: string, trackInfo?: Track) {
-    if (this.currentVideoId === videoId && this.audio.src) {
-      this.audio.play();
+    if (this.currentVideoId === videoId && this.activePlayer.src) {
+      this.activePlayer.play();
       return;
     }
 
@@ -86,8 +108,8 @@ class AudioEngine {
       const data = await response.json();
       if (!data.url) throw new Error('No stream URL returned');
 
-      this.audio.src = data.url;
-      this.audio.play();
+      this.activePlayer.src = data.url;
+      this.activePlayer.play();
     } catch (error) {
       console.error('Stream fetch error:', error);
       // If direct fetch fails, try proxy immediately
@@ -97,28 +119,26 @@ class AudioEngine {
 
   private playWithProxy(videoId: string) {
     this.isProxyFallback = true;
-    // We use the direct backend URL since Next.js rewrites /api to backend
-    // Or we can use relative path which Next.js will handle
-    this.audio.src = `/api/audio/proxy/${videoId}`;
-    this.audio.load();
-    this.audio.play();
+    this.activePlayer.src = `/api/audio/proxy/${videoId}`;
+    this.activePlayer.load();
+    this.activePlayer.play();
   }
 
   pause() {
-    this.audio.pause();
+    this.activePlayer.pause();
   }
 
   seek(time: number) {
-    this.audio.currentTime = time;
+    this.activePlayer.currentTime = time;
   }
 
   setVolume(val: number) {
-    this.audio.volume = val;
+    this.players.forEach(p => p.volume = val);
     usePlaybackStore.getState().setVolume(val);
   }
 
   getAudioElement() {
-    return this.audio;
+    return this.activePlayer;
   }
 }
 
