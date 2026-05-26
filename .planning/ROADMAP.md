@@ -11,8 +11,9 @@
 - [x] **Phase 7: Library, Likes, Playlists, Follow** - Allow users to curate their personal music library. (completed 2026-05-26)
 - [x] **Phase 8: Radio & Autoplay** - Generate endless playlists based on songs/artists. (completed 2026-05-26)
 - [ ] **Phase 9: Lyrics** - Display synchronized, tap-to-seek lyrics.
-- [x] **Phase 10: Sleep Timer & Crossfade** - Add playback customization settings. (completed 2026-05-26)
-- [ ] **Phase 11: Collaborative Playlists** - Enable real-time shared playlist editing.
+- [x] **Phase 10: Sleep Timer & Crossfade** - Add playback customization settings.
+ (completed 2026-05-26)
+- [x] **Phase 11: Collaborative Playlists** - Enable real-time shared playlist editing.
 - [ ] **Phase 12: Jam** - Build synchronized real-time listening sessions for up to 10 friends.
 - [ ] **Phase 13: Blend** - Automatically compute daily shared playlists from user histories.
 - [ ] **Phase 14: Downloads & Offline** - Support IndexedDB audio storage for offline playback.
@@ -31,10 +32,10 @@
   3. User's session persists via JWT cookie and profile info is retrieved.       
   4. User can log out.
 **Plans**: 4 plans
-- [x] 01-01-PLAN.md — Backend Foundation & Database
-- [x] 01-02-PLAN.md — Google OAuth & Session API
-- [x] 01-03-PLAN.md — Frontend Foundation & Store
-- [x] 01-04-PLAN.md — Authentication UI & Routing
+- [x] 01-01-PLAN.md â€” Backend Foundation & Database
+- [x] 01-02-PLAN.md â€” Google OAuth & Session API
+- [x] 01-03-PLAN.md â€” Frontend Foundation & Store
+- [x] 01-04-PLAN.md â€” Authentication UI & Routing
 **UI hint**: yes
 
 ### Phase 2: AudioEngine & InnerTube
@@ -46,9 +47,9 @@
   2. Audio starts playing in the browser with play/pause/seek controls.
   3. Errors like 403 or stream unavailability automatically retry or skip gracefully.
 **Plans**: 3 plans
-- [x] 02-01-PLAN.md — InnerTube Foundation & PO Token
-- [x] 02-02-PLAN.md — Audio Proxy (FastAPI)
-- [x] 02-03-PLAN.md — Playback State & AudioEngine
+- [x] 02-01-PLAN.md â€” InnerTube Foundation & PO Token
+- [x] 02-02-PLAN.md â€” Audio Proxy (FastAPI)
+- [x] 02-03-PLAN.md â€” Playback State & AudioEngine
 
 ### Phase 3: Media Session + Gapless
 **Goal**: Playback integrates with OS media controls and transitions between songs seamlessly.
@@ -59,10 +60,10 @@
   2. Track metadata (title, artist, artwork) is displayed correctly in OS media controls.
   3. Songs transition directly from one to the next without any silence (gapless playback).
 **Plans**: 4 plans
-- [x] 03-01-PLAN.md — Playback Store & Dual Buffer Foundation
-- [x] 03-02-PLAN.md — Media Session API Integration
-- [x] 03-03-PLAN.md — Transition Logic & Adaptive Pre-fetch
-- [x] 03-04-PLAN.md — Micro-Crossfade Implementation
+- [x] 03-01-PLAN.md â€” Playback Store & Dual Buffer Foundation
+- [x] 03-02-PLAN.md â€” Media Session API Integration
+- [x] 03-03-PLAN.md â€” Transition Logic & Adaptive Pre-fetch
+- [x] 03-04-PLAN.md â€” Micro-Crossfade Implementation
 **UI hint**: yes
 
 ### Phase 4: Search & Browse
@@ -74,11 +75,11 @@
   2. User can open an artist page and see their top songs, albums, and details.  
   3. User can open an album page and view its full tracklist and release info.   
 **Plans**: 5 plans
-- [x] 04-01-PLAN.md — Data Contracts & Search API
-- [x] 04-02-PLAN.md — Browse API & Image Proxy
-- [x] 04-03-PLAN.md — Search UI & Interaction
-- [x] 04-04-PLAN.md — Content Detail Pages
-- [x] 04-05-PLAN.md — Adaptive UI Polish
+- [x] 04-01-PLAN.md â€” Data Contracts & Search API
+- [x] 04-02-PLAN.md â€” Browse API & Image Proxy
+- [x] 04-03-PLAN.md â€” Search UI & Interaction
+- [x] 04-04-PLAN.md â€” Content Detail Pages
+- [x] 04-05-PLAN.md â€” Adaptive UI Polish
 **UI hint**: yes
 
 ### Phase 5: Queue & Full Player UI
@@ -90,10 +91,10 @@
   2. User can manage the queue (reorder, remove, play next).
   3. User can interact with playback context menus for songs.
 **Plans**: 4 plans
-- [x] 05-01-PLAN.md — Player Foundation & Mini-Player
-- [x] 05-02-PLAN.md — Full Player UI (Sidebar & Overlay)
-- [x] 05-03-PLAN.md — Queue Management & DnD
-- [x] 05-04-PLAN.md — Logic & Autoplay
+- [x] 05-01-PLAN.md â€” Player Foundation & Mini-Player
+- [x] 05-02-PLAN.md â€” Full Player UI (Sidebar & Overlay)
+- [x] 05-03-PLAN.md â€” Queue Management & DnD
+- [x] 05-04-PLAN.md â€” Logic & Autoplay
 **UI hint**: yes
 
 ### Phase 6: Home Feed + Charts + New Releases
@@ -126,9 +127,9 @@
   1. User can select "Start radio" on any track or artist to populate the queue with related songs.
   2. When the user's queue ends, playback seamlessly continues with autoplay suggestions if enabled.
 **Plans**: 3 plans
-- [ ] 08-01-PLAN.md — Queue Divider & Shuffle Logic
-- [ ] 08-02-PLAN.md — Radio API & State Machine
-- [ ] 08-03-PLAN.md — Queue Divider UI
+- [ ] 08-01-PLAN.md â€” Queue Divider & Shuffle Logic
+- [ ] 08-02-PLAN.md â€” Radio API & State Machine
+- [ ] 08-03-PLAN.md â€” Queue Divider UI
 **UI hint**: yes
 
 ### Phase 9: Lyrics
@@ -160,7 +161,11 @@
   1. User can generate an invite link for a specific playlist.
   2. Invited users can join the playlist and add/remove songs.
   3. All collaborators see playlist changes applied instantly in real-time without refreshing.
-**Plans**: TBD
+**Plans**: 4 plans
+- [x] 11-01-PLAN.md — Database Schema for Collaboration
+- [x] 11-02-PLAN.md — Collaboration API & Invite System
+- [ ] 11-03-PLAN.md — WebSocket Infrastructure
+- [ ] 11-04-PLAN.md — Collaborative UI & Real-time Sync
 **UI hint**: yes
 
 ### Phase 12: Jam
@@ -232,10 +237,9 @@
 | 8. Radio & Autoplay | 0/3 | Planned    |  |
 | 9. Lyrics | 1/4 | In Progress|  |
 | 10. Sleep Timer & Crossfade | 1/1 | Complete   | 2026-05-26 |
-| 11. Collaborative Playlists | 0/0 | Not started | - |
+| 11. Collaborative Playlists | 3/4 | In Progress|  |
 | 12. Jam | 0/0 | Not started | - |
 | 13. Blend | 0/0 | Not started | - |
 | 14. Downloads & Offline | 0/0 | Not started | - |
 | 15. Share Feature | 0/0 | Not started | - |
 | 16. PWA & Polish | 0/0 | Not started | - |
-
