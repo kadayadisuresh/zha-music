@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.auth import router as auth_router
 from app.api.audio import router as audio_router
+from app.api.playlist import router as playlist_router
 
 app = FastAPI(title="zha API")
 
@@ -16,6 +17,7 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(audio_router, prefix="/audio", tags=["audio"])
+app.include_router(playlist_router, prefix="/playlist", tags=["playlist"])
 
 @app.get("/")
 async def root():

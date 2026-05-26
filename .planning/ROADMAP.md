@@ -224,7 +224,7 @@
 | 4. Search & Browse | 5/5 | Complete | 2026-05-26 |
 | 5. Queue & Full Player UI | 4/4 | Complete | 2026-05-26 |
 | 6. Home Feed + Charts + New Releases | 0/0 | Not started | - |
-| 7. Library, Likes, Playlists, Follow | 0/0 | Not started | - |
+| 7. Library, Likes, Playlists, Follow | 0/4 | Planned    |  |
 | 8. Radio & Autoplay | 0/0 | Not started | - |
 | 9. Lyrics | 0/0 | Not started | - |
 | 10. Sleep Timer & Crossfade | 0/0 | Not started | - |
