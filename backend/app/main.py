@@ -4,7 +4,9 @@ from app.core.config import settings
 from app.api.auth import router as auth_router
 from app.api.audio import router as audio_router
 from app.api.playlist import router as playlist_router
+from app.api.blend import router as blend_router
 from app.api.jam import jam_manager
+from app.core.scheduler import register_scheduler
 from fastapi import WebSocket, WebSocketDisconnect, Depends
 from app.api.deps import get_current_user
 
@@ -21,6 +23,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(audio_router, prefix="/audio", tags=["audio"])
 app.include_router(playlist_router, prefix="/playlist", tags=["playlist"])
+app.include_router(blend_router, prefix="/blend", tags=["blend"])
 
 @app.websocket("/ws/jam/{session_code}")
 async def websocket_jam(
@@ -35,6 +38,10 @@ async def websocket_jam(
             await jam_manager.handle_event(websocket, session_code, data)
     except WebSocketDisconnect:
         jam_manager.disconnect(websocket, session_code)
+
+@app.on_event("startup")
+async def startup_event():
+    register_scheduler()
 
 @app.get("/")
 async def root():
