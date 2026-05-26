@@ -14,6 +14,8 @@ export interface Track {
 
 interface PlaybackState {
   dividerIndex: number;
+  autoplayEnabled: boolean;
+  playHistory: string[]; // Video IDs
   currentTrack: Track | null;
   nextTrack: Track | null;
   queue: Track[];
@@ -30,6 +32,8 @@ interface PlaybackState {
   shuffleEnabled: boolean;
 
   // Actions
+  updateHistory: (videoId: string) => void;
+  toggleAutoplay: () => void;
   setTrack: (track: Track | null) => void;
   setNextTrack: (track: Track | null) => void;
   setQueue: (queue: Track[]) => void;
@@ -65,6 +69,8 @@ export const usePlaybackStore = create<PlaybackState>()(
       currentTrack: null,
       nextTrack: null,
       dividerIndex: -1,
+      autoplayEnabled: true,
+      playHistory: [],
       queue: [],
       originalQueue: [],
       queueIndex: -1,
@@ -78,14 +84,32 @@ export const usePlaybackStore = create<PlaybackState>()(
       repeatMode: 'off',
       shuffleEnabled: false,
 
+      updateHistory: (videoId: string) => {
+        set(state => ({
+          playHistory: [...state.playHistory.slice(-50), videoId] // Keep last 50
+        }));
+      },
+      toggleAutoplay: () => {
+        set(state => {
+          const nextState = { autoplayEnabled: !state.autoplayEnabled };
+          if (nextState.autoplayEnabled === false) {
+            // Remove all autoplay tracks
+            const newQueue = state.queue.filter(t => !t.isAutoplay);
+            return { ...nextState, queue: newQueue, dividerIndex: -1 };
+          }
+          return nextState;
+        });
+      },
       setTrack: (track) => {
         const { queue } = get();
         const index = queue.findIndex(t => t.queueId === track?.queueId);
         const nextTrack = index !== -1 && index < queue.length - 1 ? queue[index + 1] : null;
         set({ currentTrack: track, nextTrack });
 
-        // Trigger autoplay if this is the last track
-        if (track && index !== -1 && index === queue.length - 1) {
+        if (track) get().updateHistory(track.id);
+
+        // Trigger autoplay if this is near the end
+        if (track && index !== -1 && (queue.length - index <= 5)) {
           get().fetchAutoplay();
         }
       },
@@ -296,20 +320,26 @@ export const usePlaybackStore = create<PlaybackState>()(
       },
 
       fetchAutoplay: async () => {
-        const { currentTrack, queue } = get();
-        if (!currentTrack) return;
+        const { currentTrack, queue, playHistory, autoplayEnabled } = get();
+        if (!currentTrack || !autoplayEnabled) return;
 
-        // Don't fetch if we already have autoplay tracks coming up
-        const hasAutoplayDownstream = queue.slice(get().queueIndex + 1).some(t => t.isAutoplay);
-        if (hasAutoplayDownstream) return;
+        // Check if we need more tracks
+        const remainingAutoplay = queue.slice(get().queueIndex + 1).filter(t => t.isAutoplay).length;
+        if (remainingAutoplay > 5) return;
 
         try {
-          const response = await fetch(`/api/innertube/upnext?videoId=${currentTrack.id}`);
-          if (!response.ok) throw new Error('Failed to fetch autoplay suggestions');
+          const historyQuery = playHistory.map(id => `history=${id}`).join('&');
+          const response = await fetch(`/api/radio?videoId=${currentTrack.id}&${historyQuery}`);
+          if (!response.ok) throw new Error('Failed to fetch radio suggestions');
 
-          const suggestions = await response.json();
-          const tracksToAdd = suggestions.slice(0, 10).map((t: any) => ({
-            ...t,
+          const data = await response.json();
+          const suggestions = data.tracks || [];
+
+          const tracksToAdd = suggestions.slice(0, 20).map((t: any) => ({
+            id: t.videoId,
+            title: t.title,
+            artists: t.artists || [],
+            thumbnail: t.thumbnails ? t.thumbnails[0].url : undefined,
             queueId: generateQueueId(),
             isAutoplay: true
           }));
@@ -319,13 +349,9 @@ export const usePlaybackStore = create<PlaybackState>()(
             queue: newQueue,
             originalQueue: [...get().originalQueue, ...tracksToAdd]
           });
-
-          // Update nextTrack if it was null
-          if (!get().nextTrack && tracksToAdd.length > 0) {
-            set({ nextTrack: tracksToAdd[0] });
-          }
         } catch (error) {
           console.error('Error fetching autoplay:', error);
+          // Toast notification would be triggered here
         }
       },
 
