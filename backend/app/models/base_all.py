@@ -4,3 +4,4 @@ from app.models.play_history import PlayHistory
 from app.models.cache import CacheEntry
 from app.models.followed_artist import FollowedArtist
 from app.models.playlist import Playlist, PlaylistSong
+from app.models.lyrics import LyricsSyncOffset
