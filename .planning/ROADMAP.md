@@ -8,10 +8,10 @@
 - [x] **Phase 4: Search & Browse** - Integrate ytmusicapi for catalog search and view. (completed 2026-05-26)
 - [x] **Phase 5: Queue & Full Player UI** - Build complete playback controls, mini player, and queue management. (completed 2026-05-26)
 - [ ] **Phase 6: Home Feed + Charts + New Releases** - Provide dynamic and trending music feeds.
-- [ ] **Phase 7: Library, Likes, Playlists, Follow** - Allow users to curate their personal music library.
-- [ ] **Phase 8: Radio & Autoplay** - Generate endless playlists based on songs/artists.
+- [x] **Phase 7: Library, Likes, Playlists, Follow** - Allow users to curate their personal music library. (completed 2026-05-26)
+- [x] **Phase 8: Radio & Autoplay** - Generate endless playlists based on songs/artists. (completed 2026-05-26)
 - [ ] **Phase 9: Lyrics** - Display synchronized, tap-to-seek lyrics.
-- [ ] **Phase 10: Sleep Timer & Crossfade** - Add playback customization settings.
+- [x] **Phase 10: Sleep Timer & Crossfade** - Add playback customization settings. (completed 2026-05-26)
 - [ ] **Phase 11: Collaborative Playlists** - Enable real-time shared playlist editing.
 - [ ] **Phase 12: Jam** - Build synchronized real-time listening sessions for up to 10 friends.
 - [ ] **Phase 13: Blend** - Automatically compute daily shared playlists from user histories.
@@ -22,13 +22,13 @@
 ## Phase Details
 
 ### Phase 1: Foundation & Auth
-**Goal**: Core infrastructure is up and users can authenticate via Google.
+**Goal**: Core infrastructure is up and users can authenticate via Google.       
 **Depends on**: None
 **Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04
 **Success Criteria**:
   1. User can view the landing page.
-  2. User can log in with their Google account and be redirected to the app.
-  3. User's session persists via JWT cookie and profile info is retrieved.
+  2. User can log in with their Google account and be redirected to the app.     
+  3. User's session persists via JWT cookie and profile info is retrieved.       
   4. User can log out.
 **Plans**: 4 plans
 - [x] 01-01-PLAN.md — Backend Foundation & Database
@@ -71,8 +71,8 @@
 **Requirements**: SEARCH-01, SEARCH-02
 **Success Criteria**:
   1. User can search for songs, artists, albums, and playlists, and see results correctly.
-  2. User can open an artist page and see their top songs, albums, and details.
-  3. User can open an album page and view its full tracklist and release info.
+  2. User can open an artist page and see their top songs, albums, and details.  
+  3. User can open an album page and view its full tracklist and release info.   
 **Plans**: 5 plans
 - [x] 04-01-PLAN.md — Data Contracts & Search API
 - [x] 04-02-PLAN.md — Browse API & Image Proxy
@@ -113,8 +113,8 @@
 **Requirements**: LIB-01, LIB-02, LIB-03
 **Success Criteria**:
   1. User can like songs, save albums, and follow artists, viewing them in the Library tab.
-  2. User can create, rename, edit the cover, and delete custom playlists.
-  3. User can add, remove, and reorder songs within their custom playlists.
+  2. User can create, rename, edit the cover, and delete custom playlists.       
+  3. User can add, remove, and reorder songs within their custom playlists.      
 **Plans**: TBD
 **UI hint**: yes
 
@@ -125,7 +125,11 @@
 **Success Criteria**:
   1. User can select "Start radio" on any track or artist to populate the queue with related songs.
   2. When the user's queue ends, playback seamlessly continues with autoplay suggestions if enabled.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 08-01-PLAN.md — Queue Divider & Shuffle Logic
+- [ ] 08-02-PLAN.md — Radio API & State Machine
+- [ ] 08-03-PLAN.md — Queue Divider UI
+**UI hint**: yes
 
 ### Phase 9: Lyrics
 **Goal**: Users can view and interact with synchronized lyrics for playing songs.
@@ -182,12 +186,12 @@
 **UI hint**: yes
 
 ### Phase 14: Downloads & Offline
-**Goal**: Users can download music to play when disconnected from the internet.
+**Goal**: Users can download music to play when disconnected from the internet.  
 **Depends on**: Phase 2
 **Requirements**: SYS-01
 **Success Criteria**:
-  1. User can click download on any track to save it offline via IndexedDB.
-  2. User can play downloaded tracks even when the device is completely offline.
+  1. User can click download on any track to save it offline via IndexedDB.      
+  2. User can play downloaded tracks even when the device is completely offline. 
   3. User can view all downloaded tracks and manage storage/bulk delete from a downloads page.
 **Plans**: TBD
 **UI hint**: yes
@@ -197,7 +201,7 @@
 **Depends on**: Phase 5
 **Requirements**: SOC-04
 **Success Criteria**:
-  1. User can click a share button on any song, album, artist, or playlist.
+  1. User can click a share button on any song, album, artist, or playlist.      
   2. Native share sheet opens on mobile, or link is copied to clipboard on desktop.
   3. Opening a shared link correctly routes to the specific content page in the app.
 **Plans**: TBD
@@ -208,7 +212,7 @@
 **Depends on**: Phase 14
 **Requirements**: SYS-02
 **Success Criteria**:
-  1. User is prompted and can install the app to their device home screen.
+  1. User is prompted and can install the app to their device home screen.       
   2. Application passes all responsive checks (mobile, tablet, desktop, large desktop).
   3. Lighthouse PWA score is >= 90.
 **Plans**: TBD
@@ -225,12 +229,13 @@
 | 5. Queue & Full Player UI | 4/4 | Complete | 2026-05-26 |
 | 6. Home Feed + Charts + New Releases | 0/0 | Not started | - |
 | 7. Library, Likes, Playlists, Follow | 0/4 | Planned    |  |
-| 8. Radio & Autoplay | 0/0 | Not started | - |
-| 9. Lyrics | 0/0 | Not started | - |
-| 10. Sleep Timer & Crossfade | 0/0 | Not started | - |
+| 8. Radio & Autoplay | 0/3 | Planned    |  |
+| 9. Lyrics | 1/4 | In Progress|  |
+| 10. Sleep Timer & Crossfade | 1/1 | Complete   | 2026-05-26 |
 | 11. Collaborative Playlists | 0/0 | Not started | - |
 | 12. Jam | 0/0 | Not started | - |
 | 13. Blend | 0/0 | Not started | - |
 | 14. Downloads & Offline | 0/0 | Not started | - |
 | 15. Share Feature | 0/0 | Not started | - |
 | 16. PWA & Polish | 0/0 | Not started | - |
+

@@ -74,8 +74,8 @@
 | PLAY-01 | Phase 8 | Pending |
 | PLAY-02 | Phase 5 | Complete |
 | PLAY-03 | Phase 9 | Pending |
-| PLAY-04 | Phase 10 | Pending |
-| PLAY-05 | Phase 10 | Pending |
+| PLAY-04 | Phase 10 | Complete |
+| PLAY-05 | Phase 10 | Complete |
 | SOC-01 | Phase 11 | Pending |
 | SOC-02 | Phase 12 | Pending |
 | SOC-03 | Phase 13 | Pending |

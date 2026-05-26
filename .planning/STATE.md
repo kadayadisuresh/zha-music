@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-last_updated: "2026-05-26T09:36:17.604Z"
+status: in-progress
+last_updated: "2026-05-26T10:13:04.711Z"
 progress:
   total_phases: 16
-  completed_phases: 5
-  total_plans: 28
-  completed_plans: 22
-  percent: 79
+  completed_phases: 6
+  total_plans: 36
+  completed_plans: 25
+  percent: 69
 ---
 
 # Project State
@@ -17,46 +17,25 @@ progress:
 ## 1. Project Reference
 
 - **Core Value:** A clean, premium music streaming web app that feels exactly like YouTube Music and Spotify, but runs entirely in a browser. It uses the InnerTube API to stream directly from YouTube's CDN, meaning no audio ever touches the server.
-- **Current Focus:** Phase 5: Queue & Full Player UI.
+- **Current Focus:** Phase 9: Lyrics.
 
 ## 2. Current Position
 
-- **Phase:** 05-queue-player-ui
-- **Plan:** 04
-- **Status:** Complete
+- **Phase:** 09-lyrics
+- **Plan:** 01
+- **Status:** in-progress
 
 **Progress:**
-[████████░░] 79%
+[███████░░░] 69%
 
 ## 3. Performance Metrics
 
 - **Performance/Speed:** Target: Lightweight, fast startup, responsive API.
 - **Quality/Bugs:** None.
-- **Phase 1 Metrics:**
-  - Plan 01: 60m
-  - Plan 02: 90m
-  - Plan 03: 45m
-  - Plan 04: 45m
-- **Phase 2 Metrics:**
+- **Phase 8 Metrics:**
   - Plan 01: 45m
-  - Plan 02: 30m
-  - Plan 03: 15m
-- **Phase 3 Metrics:**
-  - Plan 01: 30m
-  - Plan 02: 30m
+  - Plan 02: 60m
   - Plan 03: 30m
-  - Plan 04: 30m
-- **Phase 4 Metrics:**
-  - Plan 01: 45m
-  - Plan 02: 45m
-  - Plan 03: 60m
-  - Plan 04: 60m
-  - Plan 05: 30m
-- **Phase 5 Metrics:**
-  - Plan 01: 20m
-  - Plan 02: 30m
-  - Plan 03: 60m
-  - Plan 04: 45m
 
 ## 4. Accumulated Context
 
@@ -65,22 +44,16 @@ progress:
   - FastAPI handles only data, auth, websockets.
   - No Web Audio API or Howler.js, only native HTMLAudioElement.
   - Strict UI responsiveness and Next.js 15 App Router conventions.
-  - Used dynamic import in apiClient to avoid circular dependencies between API and Store.
-  - Implemented silent redirect to landing page on 401 errors for a smoother UX.
-  - Dual-player architecture in AudioEngine for gapless playback (D-03).
-  - Backend image proxy with dominant color extraction (colorthief) and caching for adaptive backgrounds.
-  - **New:** Integrated `@dnd-kit` for performant queue reordering.
-  - **New:** Implemented Autoplay via InnerTube `upnext` endpoint.
+  - **New:** Integrated `dividerIndex` in `playbackStore` to separate manual and suggested tracks.
+  - **New:** Autoplay engine using `getWatchPlaylist` with duplicate avoidance (queue + 2-hour session history).
 - **Design Patterns:**
   - Singleton AudioEngine (SSR-guarded).
   - Zustand for frontend state (playback, search, UI).
   - Cross-device sync via backend API.
-  - Silent auth refresh / 401 interception.
-  - Adaptive UI with 500ms smooth background transitions.
-  - Context Menu pattern with fixed positioning and viewport detection.
+  - Autoplay batch management (fetch 20, replenish at 5 remaining).
 - **Current Blockers:** None
 
 ## 5. Session Continuity
 
-- **Last Action:** Completed Phase 5 (Queue & Full Player UI).
-- **Next Steps:** Proceed to Phase 6 (Home Feed + Charts + New Releases).
+- **Last Action:** Completed Phase 8 (Radio & Autoplay). Starting Phase 9: Lyrics.
+- **Next Steps:** Proceed to Phase 9 (Lyrics), Plan 01.
