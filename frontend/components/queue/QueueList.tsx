@@ -17,14 +17,15 @@ import {
 } from '@dnd-kit/sortable';
 import { usePlaybackStore, Track } from '@/lib/stores/playbackStore';
 import { QueueItem } from './QueueItem';
+import { QueueDivider } from './QueueDivider';
 
 export const QueueList: React.FC = () => {
-  const { queue, queueIndex, reorderQueue, removeFromQueue, playTrack, setQueueIndex } = usePlaybackStore();
+  const { queue, queueIndex, reorderQueue, removeFromQueue, playTrack, setQueueIndex, dividerIndex, toggleAutoplay, autoplayEnabled } = usePlaybackStore();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // Avoid accidental drags when clicking
+        distance: 8,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -40,9 +41,20 @@ export const QueueList: React.FC = () => {
       const newIndex = queue.findIndex((t) => t.queueId === over.id);
       
       if (oldIndex !== -1 && newIndex !== -1) {
+        // Constraint: Don't allow manual tracks to be reordered into the autoplay section
+        if (dividerIndex !== -1) {
+           if (oldIndex < dividerIndex && newIndex >= dividerIndex) return;
+           if (oldIndex >= dividerIndex && newIndex < dividerIndex) return;
+        }
         reorderQueue(oldIndex, newIndex);
       }
     }
+  };
+
+  const handleClearAutoplay = () => {
+    // Only remove autoplay tracks
+    const autoplayItems = queue.reduce((acc, t, i) => t.isAutoplay ? [...acc, i] : acc, [] as number[]);
+    autoplayItems.reverse().forEach(idx => removeFromQueue(idx));
   };
 
   const handlePlay = (track: Track, index: number) => {
@@ -70,14 +82,22 @@ export const QueueList: React.FC = () => {
           strategy={verticalListSortingStrategy}
         >
           {queue.map((track, index) => (
-            <QueueItem
-              key={track.queueId || index}
-              track={track}
-              index={index}
-              isActive={index === queueIndex}
-              onRemove={removeFromQueue}
-              onPlay={handlePlay}
-            />
+            <React.Fragment key={track.queueId || index}>
+              {index === dividerIndex && (
+                <QueueDivider 
+                  autoplayEnabled={autoplayEnabled} 
+                  onToggleAutoplay={toggleAutoplay}
+                  onClearAutoplay={handleClearAutoplay}
+                />
+              )}
+              <QueueItem
+                track={track}
+                index={index}
+                isActive={index === queueIndex}
+                onRemove={removeFromQueue}
+                onPlay={handlePlay}
+              />
+            </React.Fragment>
           ))}
         </SortableContext>
       </DndContext>
