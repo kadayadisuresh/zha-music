@@ -23,6 +23,9 @@ sys.path.append(str(Path(__file__).parent.parent))
 from app.core.config import settings
 from app.models.base import Base
 from app.models.user import User  # Ensure User is loaded
+from app.models.play_history import PlayHistory
+from app.models.cache import CacheEntry
+from app.models.followed_artist import FollowedArtist
 
 # add your model's MetaData object here
 # for 'autogenerate' support
