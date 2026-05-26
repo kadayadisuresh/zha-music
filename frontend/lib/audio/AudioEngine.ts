@@ -66,10 +66,15 @@ class AudioEngine {
 
     player.addEventListener('ended', () => {
       if (this.activeIdx === idx && !this.transitionTriggered) {
-        this.switchTracks(true);
+        const { repeatMode } = usePlaybackStore.getState();
+        if (repeatMode === 'one') {
+          player.currentTime = 0;
+          player.play();
+        } else {
+          this.switchTracks(true);
+        }
       }
     });
-
     player.addEventListener('loadedmetadata', () => {
       if (this.activeIdx === idx) {
         usePlaybackStore.getState().setDuration(player.duration);
@@ -141,6 +146,9 @@ class AudioEngine {
     if (this.prefetchTriggered) return;
     if (!player.duration || isNaN(player.duration)) return;
 
+    const { repeatMode } = usePlaybackStore.getState();
+    if (repeatMode === 'one') return;
+
     const connection = (navigator as any).connection;
     const effectiveType = connection?.effectiveType || '4g';
     const prefetchWindow = (effectiveType === '2g' || effectiveType === 'slow-2g') ? 30 : 10;
@@ -157,6 +165,9 @@ class AudioEngine {
   private checkTransition(player: HTMLAudioElement) {
     if (this.transitionTriggered) return;
     if (!player.duration || isNaN(player.duration)) return;
+
+    const { repeatMode } = usePlaybackStore.getState();
+    if (repeatMode === 'one') return;
 
     // Trigger switch 200ms before end for gapless
     if (player.duration - player.currentTime <= 0.2) {
