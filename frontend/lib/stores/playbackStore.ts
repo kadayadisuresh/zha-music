@@ -13,6 +13,7 @@ export interface Track {
 }
 
 interface PlaybackState {
+  dividerIndex: number;
   currentTrack: Track | null;
   nextTrack: Track | null;
   queue: Track[];
@@ -63,6 +64,7 @@ export const usePlaybackStore = create<PlaybackState>()(
     (set, get) => ({
       currentTrack: null,
       nextTrack: null,
+      dividerIndex: -1,
       queue: [],
       originalQueue: [],
       queueIndex: -1,
@@ -209,9 +211,20 @@ export const usePlaybackStore = create<PlaybackState>()(
       },
 
       removeFromQueue: (index) => {
-        const { queue, queueIndex } = get();
+        const { queue, queueIndex, dividerIndex } = get();
         const newQueue = [...queue];
-        newQueue.splice(index, 1);
+        const removedItem = newQueue.splice(index, 1)[0];
+        
+        let newDividerIndex = dividerIndex;
+        if (newDividerIndex !== -1) {
+          if (index < newDividerIndex) {
+            newDividerIndex--;
+          } else if (index === newDividerIndex) {
+            // Check if there are any more manual tracks
+            const hasManual = newQueue.slice(0, newDividerIndex).some(t => !t.isAutoplay);
+            if (!hasManual) newDividerIndex = -1;
+          }
+        }
 
         let newQueueIndex = queueIndex;
         if (index < queueIndex) {
@@ -229,11 +242,11 @@ export const usePlaybackStore = create<PlaybackState>()(
 
         const nextTrack = (newQueueIndex !== -1 && newQueueIndex < newQueue.length - 1) ? newQueue[newQueueIndex + 1] : null;
 
-        set({ queue: newQueue, queueIndex: newQueueIndex, nextTrack });
+        set({ queue: newQueue, queueIndex: newQueueIndex, nextTrack, dividerIndex: newDividerIndex });
       },
 
       clearQueue: () => {
-        set({ queue: [], originalQueue: [], queueIndex: -1, currentTrack: null, nextTrack: null, isPlaying: false });
+        set({ queue: [], originalQueue: [], queueIndex: -1, currentTrack: null, nextTrack: null, isPlaying: false, dividerIndex: -1 });
       },
 
       addNext: (track) => {
@@ -250,15 +263,35 @@ export const usePlaybackStore = create<PlaybackState>()(
       },
 
       addToQueue: (track) => {
-        const { queue, originalQueue, queueIndex } = get();
-        const trackWithId = { ...track, queueId: generateQueueId() };  
-        const newQueue = [...queue, trackWithId];
+        const { queue, originalQueue, queueIndex, dividerIndex } = get();
+        const trackWithId = { ...track, queueId: generateQueueId() };
+        
+        let newQueue = [...queue];
+        let newDividerIndex = dividerIndex;
+
+        if (track.isAutoplay) {
+          // If adding autoplay, just append
+          newQueue.push(trackWithId);
+          if (newDividerIndex === -1) {
+            newDividerIndex = newQueue.length - 1;
+          }
+        } else {
+          // If adding manual, insert before divider if it exists
+          if (newDividerIndex !== -1) {
+            newQueue.splice(newDividerIndex, 0, trackWithId);
+            newDividerIndex++;
+          } else {
+            newQueue.push(trackWithId);
+          }
+        }
+
         const nextTrack = (queueIndex !== -1 && queueIndex === queue.length - 1) ? trackWithId : get().nextTrack;
 
         set({
           queue: newQueue,
           originalQueue: [...originalQueue, trackWithId],
-          nextTrack
+          nextTrack,
+          dividerIndex: newDividerIndex
         });
       },
 
