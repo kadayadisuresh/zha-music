@@ -106,8 +106,14 @@ async def google_callback(request: Request, code: str, state: str, db: AsyncSess
     # Generate JWT
     jwt_token = create_access_token(subject=str(user.id))
     
+    # Determine redirect URL
+    return_to = request.cookies.get("oauth_return_to")
+    frontend_redirect_url = settings.FRONTEND_URL
+    if return_to and return_to.startswith("/"):
+        frontend_redirect_url = f"{settings.FRONTEND_URL.rstrip('/')}{return_to}"
+
     # Redirect to frontend
-    response = RedirectResponse(url=settings.FRONTEND_URL)
+    response = RedirectResponse(url=frontend_redirect_url)
     response.set_cookie(
         key="access_token",
         value=jwt_token,
@@ -115,8 +121,9 @@ async def google_callback(request: Request, code: str, state: str, db: AsyncSess
         secure=True,
         samesite="strict"
     )
-    # Delete the oauth_state cookie
+    # Delete the cookies
     response.delete_cookie("oauth_state")
+    response.delete_cookie("oauth_return_to")
     return response
 
 @router.get("/me")

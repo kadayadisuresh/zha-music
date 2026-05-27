@@ -1,84 +1,49 @@
 # Project Requirements
 
 ## Authentication & Users
-- [x] `AUTH-01`: Google OAuth login, landing page, and JWT cookie setup.
-- [x] `AUTH-02`: User profile retrieval (`/auth/me`).
-- [x] `AUTH-03`: Logout functionality and session clearing.
-- [x] `AUTH-04`: JWT expiry handling (silently redirect to landing page).
+- `AUTH-01`: Google OAuth login, landing page, and JWT cookie setup. [COMPLETE]
+- `AUTH-02`: User profile retrieval (`/auth/me`). [COMPLETE]
+- `AUTH-03`: Logout functionality and session clearing. [COMPLETE]
+- `AUTH-04`: JWT expiry handling (silently redirect to landing page). [COMPLETE]
 
 ## Audio Pipeline
-- [x] `AUDIO-01`: AudioEngine singleton with SSR guard and basic playback (play/pause/seek).
-- [x] `AUDIO-02`: InnerTube API direct browser integration for stream URLs (cache, error handling).
-- [x] `AUDIO-03`: Media Session API integration for OS lock screen controls.
-- [x] `AUDIO-04`: Gapless playback (preload next song 10s before end).
+- `AUDIO-01`: AudioEngine singleton with SSR guard and basic playback. [COMPLETE]
+- `AUDIO-02`: InnerTube API direct browser integration for stream URLs. [COMPLETE]
+- `AUDIO-03`: Media Session API integration for OS lock screen controls. [COMPLETE]
+- `AUDIO-04`: Gapless playback (preload next song 10s before end). [COMPLETE]
 
 ## Search & Discovery
-- [x] `SEARCH-01`: Unified search page (songs, artists, albums, playlists) via ytmusicapi.
-- [x] `SEARCH-02`: Artist and Album detail pages.
+- `SEARCH-01`: Unified search page via ytmusicapi. [COMPLETE]
+- `SEARCH-02`: Artist and Album detail pages. [COMPLETE]
 
 ## Player UI & Queue
-- [x] `PLAYER-01`: Full playback controls and Queue management (shuffle, repeat, next/prev).
-- [x] `PLAYER-02`: Mini Player (bottom bar) with progress.
-- [x] `PLAYER-03`: Fullscreen Now Playing screen (desktop panel and mobile fullscreen).
+- `PLAYER-01`: Full playback controls and Queue management. [COMPLETE]
+- `PLAYER-02`: Mini Player (bottom bar) with progress. [COMPLETE]
+- `PLAYER-03`: Fullscreen Now Playing screen. [COMPLETE]
 
 ## Home & Content
-- [ ] `HOME-01`: Home Feed with horizontal rows (recommendations, moods).
-- [ ] `HOME-02`: Charts page (global + regional).
-- [ ] `HOME-03`: New Releases page.
+- `HOME-01`: Home Feed with horizontal rows. [COMPLETE]
+- `HOME-02`: Charts page (global + regional). [COMPLETE]
+- `HOME-03`: New Releases page. [COMPLETE]
 
 ## Library & Playlists
-- [ ] `LIB-01`: Liked songs, Saved albums, and Followed artists functionality.
-- [ ] `LIB-02`: Playlist CRUD (create, edit cover/name, delete, add/remove/reorder songs).
-- [ ] `LIB-03`: Library overview page with sections.
+- `LIB-01`: Liked songs, Saved albums, and Followed artists functionality. [COMPLETE]
+- `LIB-02`: Playlist CRUD (create, edit, delete, reorder). [COMPLETE]
+- `LIB-03`: Library overview page with sections. [COMPLETE]
 
 ## Playback Features
-- [ ] `PLAY-01`: Song and Artist Radio generation via ytmusicapi.
-- [x] `PLAY-02`: Autoplay (trigger radio when queue ends).
-- [ ] `PLAY-03`: Synced Lyrics via LRCLIB (auto-scroll, tap-to-seek).
-- [ ] `PLAY-04`: Sleep timer functionality.
-- [ ] `PLAY-05`: Crossfade between tracks (0-12s setting).
+- `PLAY-01`: Song and Artist Radio generation via ytmusicapi. [COMPLETE]
+- `PLAY-02`: Autoplay (trigger radio when queue ends). [COMPLETE]
+- `PLAY-03`: Synced Lyrics via LRCLIB (auto-scroll, tap-to-seek). [COMPLETE]
+- `PLAY-04`: Sleep timer functionality. [COMPLETE]
+- `PLAY-05`: Crossfade between tracks (0-12s setting). [COMPLETE]
 
 ## Social & Collaboration
-- [ ] `SOC-01`: Collaborative Playlists (invite, real-time sync).
-- [ ] `SOC-02`: Jam Sessions (WebSocket, real-time control, max 10 people).
-- [ ] `SOC-03`: Blend Playlists (daily compute, invite/accept).
-- [ ] `SOC-04`: Share Feature (shareable URLs and Web Share API).
+- `SOC-01`: Collaborative Playlists (invite, real-time sync). [COMPLETE]
+- `SOC-02`: Jam Sessions (WebSocket, real-time control). [COMPLETE]
+- `SOC-03`: Blend Playlists (daily compute, invite/accept). [COMPLETE]
+- `SOC-04`: Share Feature (shareable URLs and Web Share API). [COMPLETE]
 
 ## Offline & Platform
-- [ ] `SYS-01`: Downloads & Offline playback via IndexedDB.
-- [ ] `SYS-02`: PWA installation (manifest, service worker) and responsive polish.
-
-## Traceability
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| AUTH-01 | Phase 1 | Complete |
-| AUTH-02 | Phase 1 | Complete |
-| AUTH-03 | Phase 1 | Complete |
-| AUTH-04 | Phase 1 | Complete |
-| AUDIO-01 | Phase 2 | Complete |
-| AUDIO-02 | Phase 2 | Complete |
-| AUDIO-03 | Phase 3 | Complete |
-| AUDIO-04 | Phase 3 | Complete |
-| SEARCH-01 | Phase 4 | Complete |
-| SEARCH-02 | Phase 4 | Complete |
-| PLAYER-01 | Phase 5 | Complete |
-| PLAYER-02 | Phase 5 | Complete |
-| PLAYER-03 | Phase 5 | Complete |
-| HOME-01 | Phase 6 | Pending |
-| HOME-02 | Phase 6 | Pending |
-| HOME-03 | Phase 6 | Pending |
-| LIB-01 | Phase 7 | Pending |
-| LIB-02 | Phase 7 | Pending |
-| LIB-03 | Phase 7 | Pending |
-| PLAY-01 | Phase 8 | Pending |
-| PLAY-02 | Phase 5 | Complete |
-| PLAY-03 | Phase 9 | Pending |
-| PLAY-04 | Phase 10 | Complete |
-| PLAY-05 | Phase 10 | Complete |
-| SOC-01 | Phase 11 | Pending |
-| SOC-02 | Phase 12 | Pending |
-| SOC-03 | Phase 13 | Pending |
-| SYS-01 | Phase 14 | Pending |
-| SOC-04 | Phase 15 | Pending |
-| SYS-02 | Phase 16 | Pending |
+- `SYS-01`: Downloads & Offline playback via IndexedDB. [COMPLETE]
+- `SYS-02`: PWA installation and responsive polish. [COMPLETE]

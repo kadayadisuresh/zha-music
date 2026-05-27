@@ -7,6 +7,7 @@ import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { ClientBootstrapper } from "@/components/layout/ClientBootstrapper";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import PWAUpdateToast from "@/components/pwa/PWAUpdateToast";
+import { PlaybackAnnouncer } from "@/components/player/PlaybackAnnouncer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,6 +36,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col antialiased bg-black text-[#fffff0]`}
       >
         <ClientBootstrapper />
+        <PlaybackAnnouncer />
         <AppBackground />
         <OfflineBanner />
         <PWAUpdateToast />

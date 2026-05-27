@@ -3,9 +3,11 @@
 import React, { useEffect, useState, use } from 'react';
 import { AlbumDetails } from '@/lib/api/mappers';
 import { TrackList } from '@/components/browse/TrackList';
+import { SharePopover } from '@/components/shared/SharePopover';
 import { useUIStore } from '@/lib/stores/uiStore';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Share } from 'lucide-react';
 
 interface AlbumPageProps {
   params: Promise<{ id: string }>;
@@ -85,8 +87,23 @@ export default function AlbumPage({ params }: AlbumPageProps) {
           )}
         </div>
         
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-bold uppercase tracking-wider">Album</span>
+        <div className="flex flex-col gap-2 w-full">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm font-bold uppercase tracking-wider">Album</span>
+            <SharePopover 
+              options={{ 
+                title: album.title, 
+                text: `Check out the album ${album.title}`, 
+                url: typeof window !== 'undefined' ? window.location.href : '' 
+              }}
+              align="right"
+              side="bottom"
+            >
+              <button className="p-3 bg-black/40 hover:bg-black/60 rounded-full text-white backdrop-blur-md transition-colors pointer-events-none flex-shrink-0">
+                <Share size={24} />
+              </button>
+            </SharePopover>
+          </div>
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-black mb-2">{album.title}</h1>
           <div className="flex items-center gap-2 text-zinc-300">
             {album.artists.map((artist, i) => (

@@ -14,10 +14,12 @@ import {
   ThumbsUp,
   MoreVertical,
   Radio,
-  Clock
+  Clock,
+  Share
 } from "lucide-react";
 import { usePlaybackStore } from "@/lib/stores/playbackStore";
 import { Button } from "@/components/ui/Button";
+import { SharePopover } from "@/components/shared/SharePopover";
 
 interface PlayerControlsProps {
   variant?: "mini" | "full";
@@ -36,10 +38,13 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ variant = "full"
     volume,
     setVolume,
     isMuted,
-    setIsMuted
+    setIsMuted,
+    currentTrack
   } = usePlaybackStore();
 
   const handleTogglePlay = () => setPlaying(!isPlaying);
+
+  const shareUrl = typeof window !== 'undefined' && currentTrack ? `${window.location.origin}/song/${currentTrack.id}` : '';
 
   if (variant === "mini") {
     return (
@@ -138,6 +143,21 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ variant = "full"
           <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
             <Radio size={18} />
           </Button>
+          {currentTrack && (
+            <SharePopover 
+              options={{ 
+                title: currentTrack.title, 
+                text: `Listen to ${currentTrack.title} by ${currentTrack.artists.map(a => a.name).join(', ')}`, 
+                url: shareUrl 
+              }}
+              align="center"
+              side="top"
+            >
+              <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white pointer-events-none">
+                <Share size={18} />
+              </Button>
+            </SharePopover>
+          )}
           <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
             <MoreVertical size={18} />
           </Button>

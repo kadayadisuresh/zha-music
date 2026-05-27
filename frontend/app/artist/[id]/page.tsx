@@ -4,8 +4,12 @@ import React, { useEffect, useState, use } from 'react';
 import { ArtistDetails } from '@/lib/api/mappers';
 import { TrackItem } from '@/components/shared/TrackItem';
 import { AlbumCard } from '@/components/shared/AlbumCard';
+import { SharePopover } from '@/components/shared/SharePopover';
 import { useUIStore } from '@/lib/stores/uiStore';
 import Image from 'next/image';
+import { Share } from 'lucide-react';
+
+import { ArtistSkeleton } from '@/components/artist/ArtistSkeleton';
 
 interface ArtistPageProps {
   params: Promise<{ id: string }>;
@@ -46,11 +50,7 @@ export default function ArtistPage({ params }: ArtistPageProps) {
   }, [id, setActiveThumbnail]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-black text-white">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
-      </div>
-    );
+    return <ArtistSkeleton />;
   }
 
   if (error || !artist) {
@@ -87,7 +87,22 @@ export default function ArtistPage({ params }: ArtistPageProps) {
         </div>
         
         <div className="absolute bottom-0 left-0 p-8 z-10 w-full max-w-7xl mx-auto">
-          <h1 className="text-6xl md:text-8xl font-black mb-4 truncate">{artist.name}</h1>
+          <div className="flex items-center gap-6 mb-4">
+            <h1 className="text-6xl md:text-8xl font-black truncate">{artist.name}</h1>
+            <SharePopover 
+              options={{ 
+                title: artist.name, 
+                text: `Check out ${artist.name}`, 
+                url: typeof window !== 'undefined' ? window.location.href : '' 
+              }}
+              align="left"
+              side="top"
+            >
+              <button className="p-3 bg-black/40 hover:bg-black/60 rounded-full text-white backdrop-blur-md transition-colors pointer-events-none">
+                <Share size={24} />
+              </button>
+            </SharePopover>
+          </div>
           {artist.description && (
             <p className="text-zinc-300 max-w-2xl line-clamp-3 text-lg">{artist.description}</p>
           )}

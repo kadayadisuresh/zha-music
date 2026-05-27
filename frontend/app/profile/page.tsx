@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useUserStore } from "@/lib/stores/userStore";
 import { Button } from "@/components/ui/Button";
 
+import { ProfileSkeleton } from "@/components/profile/ProfileSkeleton";
+
 export default function ProfilePage() {
   const { user, isLoading, checkSession, logout } = useUserStore();
   const router = useRouter();
@@ -25,11 +27,7 @@ export default function ProfilePage() {
   };
 
   if (isLoading || !user) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-zinc-50 dark:bg-black">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-900 border-t-transparent dark:border-zinc-50 dark:border-t-transparent" />
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   return (
