@@ -4,6 +4,9 @@ import { AppBackground } from "@/components/layout/AppBackground";
 import { MiniPlayer } from "@/components/player/MiniPlayer";
 import { FullPlayer } from "@/components/player/FullPlayer";
 import { OfflineBanner } from "@/components/layout/OfflineBanner";
+import { ClientBootstrapper } from "@/components/layout/ClientBootstrapper";
+import InstallPrompt from "@/components/pwa/InstallPrompt";
+import PWAUpdateToast from "@/components/pwa/PWAUpdateToast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,8 +34,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col antialiased bg-black text-[#fffff0]`}
       >
+        <ClientBootstrapper />
         <AppBackground />
         <OfflineBanner />
+        <PWAUpdateToast />
+        <InstallPrompt />
         <main className="flex-1 pb-[72px]">
           {children}
         </main>
