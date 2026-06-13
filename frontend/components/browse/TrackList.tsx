@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Track } from '@/lib/api/mappers';
 import { usePlaybackStore } from '@/lib/stores/playbackStore';
 import { TrackContextMenu } from '../shared/TrackContextMenu';
+import { MoreVertical } from 'lucide-react';
 
 interface TrackListProps {
   tracks: Track[];
@@ -77,8 +78,24 @@ export function TrackList({ tracks }: TrackListProps) {
                 </div>
               </div>
               
-              <div className="w-32 text-right text-zinc-500 text-sm tabular-nums">
-                {formatDuration(track.duration)}
+              <div className="w-32 text-right text-zinc-500 text-sm tabular-nums flex items-center justify-end gap-2">
+                <span>{formatDuration(track.duration)}</span>
+                <button 
+                  type="button"
+                  className="p-1 text-zinc-500 hover:text-white rounded-full hover:bg-zinc-700/50 opacity-0 group-hover:opacity-100 focus:opacity-100 md:group-hover:opacity-100 max-md:opacity-100 transition-opacity ml-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setContextMenu({
+                      track,
+                      x: rect.left - 180,
+                      y: rect.bottom + 5,
+                    });
+                  }}
+                  title="More options"
+                >
+                  <MoreVertical size={16} />
+                </button>
               </div>
             </div>
           );

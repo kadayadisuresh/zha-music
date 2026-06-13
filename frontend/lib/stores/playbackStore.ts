@@ -30,6 +30,12 @@ interface PlaybackState {
   networkType: string;
   repeatMode: 'off' | 'one' | 'all';
   shuffleEnabled: boolean;
+  likedTracks: Track[]; // Track objects
+  sleepTimerDuration: number | null; // Selected minutes (-1 for end of track, null for off)
+  sleepTimerEndTime: number | null; // Timestamp
+  sleepTimerTimeoutId: NodeJS.Timeout | null;
+  crossfadeDuration: number; // Seconds (0-12), 0 = gapless only
+  autoCleanupEnabled: boolean; // Delete downloads not played in 30 days
 
   // Actions
   updateHistory: (videoId: string) => void;
@@ -55,10 +61,20 @@ interface PlaybackState {
   addNext: (track: Track) => void;
   addToQueue: (track: Track) => void;
   fetchAutoplay: () => Promise<void>;
+  startRadio: () => Promise<number>;
+  toggleLikeTrack: (track: Track) => void;
+  isTrackLiked: (trackId: string) => boolean;
+  setSleepTimer: (minutes: number | null) => void;
+  setCrossfadeDuration: (seconds: number) => void;
+  toggleAutoCleanup: () => void;
 
   // Helpers
   next: () => void;
   previous: () => void;
+  skipNext: () => void;
+  skipPrevious: () => void;
+  shuffleQueue: () => void;
+  unshuffleQueue: () => void;
 }
 
 const generateQueueId = () => Math.random().toString(36).substring(2, 11);
@@ -83,6 +99,12 @@ export const usePlaybackStore = create<PlaybackState>()(
       networkType: '4g',
       repeatMode: 'off',
       shuffleEnabled: false,
+      likedTracks: [],
+      sleepTimerDuration: null,
+      sleepTimerEndTime: null,
+      sleepTimerTimeoutId: null,
+      crossfadeDuration: 0,
+      autoCleanupEnabled: false,
 
       updateHistory: (videoId: string) => {
         set(state => ({
@@ -145,9 +167,10 @@ export const usePlaybackStore = create<PlaybackState>()(
         get().setQueueIndex(index);
         set({ currentTrack: track, isPlaying: true });
 
-        import('../audio/AudioEngine').then(({ audioEngine }) => {     
+        import('../audio/AudioEngine').then(({ audioEngine }) => {
           audioEngine.play(track.id, track);
         });
+        import('../services/userDataService').then(({ recordPlay }) => recordPlay(track));
       },
 
       setPlaying: (isPlaying) => set({ isPlaying }),
@@ -330,28 +353,76 @@ export const usePlaybackStore = create<PlaybackState>()(
         try {
           const historyQuery = playHistory.map(id => `history=${id}`).join('&');
           const response = await fetch(`/api/radio?videoId=${currentTrack.id}&${historyQuery}`);
-          if (!response.ok) throw new Error('Failed to fetch radio suggestions');
+          if (!response.ok) return; // Silently fail — radio is optional
 
           const data = await response.json();
           const suggestions = data.tracks || [];
+          if (suggestions.length === 0) return;
 
           const tracksToAdd = suggestions.slice(0, 20).map((t: any) => ({
             id: t.videoId,
             title: t.title,
             artists: t.artists || [],
-            thumbnail: t.thumbnails ? t.thumbnails[0].url : undefined,
+            thumbnail: t.thumbnails ? t.thumbnails[0]?.url : undefined,
             queueId: generateQueueId(),
             isAutoplay: true
           }));
 
+          if (tracksToAdd.length > 0) {
+            const newQueue = [...get().queue, ...tracksToAdd];
+            set({ 
+              queue: newQueue,
+              originalQueue: [...get().originalQueue, ...tracksToAdd]
+            });
+          }
+        } catch {
+          // Radio/autoplay is non-critical — fail silently
+        }
+      },
+
+      // Explicitly start a radio "station" seeded from the current track:
+      // enable autoplay and append a batch of related tracks to the queue.
+      // Returns the number of tracks added (0 if none / failed).
+      startRadio: async () => {
+        const { currentTrack, playHistory } = get();
+        if (!currentTrack) return 0;
+
+        if (!get().autoplayEnabled) set({ autoplayEnabled: true });
+
+        try {
+          const historyQuery = playHistory.map(id => `history=${id}`).join('&');
+          const response = await fetch(`/api/radio?videoId=${currentTrack.id}&${historyQuery}`);
+          if (!response.ok) return 0;
+
+          const data = await response.json();
+          const suggestions = data.tracks || [];
+          if (suggestions.length === 0) return 0;
+
+          // Skip tracks already in the queue to avoid duplicates
+          const existingIds = new Set(get().queue.map(t => t.id));
+          const tracksToAdd = suggestions
+            .filter((t: any) => t.videoId && !existingIds.has(t.videoId))
+            .slice(0, 25)
+            .map((t: any) => ({
+              id: t.videoId,
+              title: t.title,
+              artists: t.artists || [],
+              thumbnail: t.thumbnails ? t.thumbnails[0]?.url : undefined,
+              queueId: generateQueueId(),
+              isAutoplay: true,
+            }));
+
+          if (tracksToAdd.length === 0) return 0;
+
           const newQueue = [...get().queue, ...tracksToAdd];
-          set({ 
+          set({
             queue: newQueue,
-            originalQueue: [...get().originalQueue, ...tracksToAdd]
+            originalQueue: [...get().originalQueue, ...tracksToAdd],
+            nextTrack: get().nextTrack || tracksToAdd[0],
           });
-        } catch (error) {
-          console.error('Error fetching autoplay:', error);
-          // Toast notification would be triggered here
+          return tracksToAdd.length;
+        } catch {
+          return 0;
         }
       },
 
@@ -399,7 +470,73 @@ export const usePlaybackStore = create<PlaybackState>()(
             audioEngine.seek(0);
           });
         }
-      }
+      },
+
+      toggleLikeTrack: (track) => {
+        const { likedTracks } = get();
+        const exists = likedTracks.some(t => t.id === track.id);
+        if (exists) {
+          set({ likedTracks: likedTracks.filter(t => t.id !== track.id) });
+        } else {
+          set({ likedTracks: [...likedTracks, track] });
+        }
+      },
+
+      isTrackLiked: (trackId) => {
+        return get().likedTracks.some(t => t.id === trackId);
+      },
+
+      setSleepTimer: (minutes) => {
+        const currentTimeout = get().sleepTimerTimeoutId;
+        if (currentTimeout) {
+          clearTimeout(currentTimeout);
+        }
+
+        if (minutes === null) {
+          set({ 
+            sleepTimerDuration: null, 
+            sleepTimerEndTime: null, 
+            sleepTimerTimeoutId: null 
+          });
+          return;
+        }
+
+        if (minutes === -1) {
+          set({ 
+            sleepTimerDuration: -1, 
+            sleepTimerEndTime: null, 
+            sleepTimerTimeoutId: null 
+          });
+          return;
+        }
+
+        const durationMs = minutes * 60 * 1000;
+        const endTime = Date.now() + durationMs;
+
+        const timeoutId = setTimeout(() => {
+          import('../audio/AudioEngine').then(({ audioEngine }) => {
+            // Fade out over 3 seconds, then stop (SRD 5.20)
+            audioEngine.fadeOutAndPause(3000);
+          });
+          get().setSleepTimer(null);
+        }, durationMs);
+
+        set({ 
+          sleepTimerDuration: minutes, 
+          sleepTimerEndTime: endTime, 
+          sleepTimerTimeoutId: timeoutId 
+        });
+      },
+
+      setCrossfadeDuration: (seconds) => {
+        const clamped = Math.max(0, Math.min(12, Math.round(seconds)));
+        set({ crossfadeDuration: clamped });
+      },
+
+      toggleAutoCleanup: () => set((state) => ({ autoCleanupEnabled: !state.autoCleanupEnabled })),
+
+      skipNext: () => get().next(),
+      skipPrevious: () => get().previous()
     }),    {
       name: 'zha-playback-storage',
       partialize: (state) => ({
@@ -407,6 +544,10 @@ export const usePlaybackStore = create<PlaybackState>()(
         repeatMode: state.repeatMode,
         shuffleEnabled: state.shuffleEnabled,
         isMuted: state.isMuted,
+        likedTracks: state.likedTracks || [],
+        crossfadeDuration: state.crossfadeDuration,
+        autoCleanupEnabled: state.autoCleanupEnabled,
+        autoplayEnabled: state.autoplayEnabled,
       }),
     }
   )

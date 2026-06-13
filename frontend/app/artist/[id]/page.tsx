@@ -8,6 +8,10 @@ import { SharePopover } from '@/components/shared/SharePopover';
 import { useUIStore } from '@/lib/stores/uiStore';
 import Image from 'next/image';
 import { Share } from 'lucide-react';
+import { usePlaybackStore } from '@/lib/stores/playbackStore';
+import { useUserStore } from '@/lib/stores/userStore';
+import { apiClient } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
 
 import { ArtistSkeleton } from '@/components/artist/ArtistSkeleton';
 
@@ -21,6 +25,9 @@ export default function ArtistPage({ params }: ArtistPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const setActiveThumbnail = useUIStore((state) => state.setActiveThumbnail);
+  const playTrack = usePlaybackStore((state) => state.playTrack);
+  const { user } = useUserStore();
+  const [isFollowed, setIsFollowed] = useState(false);
 
   useEffect(() => {
     const fetchArtist = async () => {
@@ -48,6 +55,70 @@ export default function ArtistPage({ params }: ArtistPageProps) {
     // Reset background when leaving
     return () => setActiveThumbnail(null);
   }, [id, setActiveThumbnail]);
+
+  useEffect(() => {
+    const checkFollowStatus = async () => {
+      if (!artist) return;
+      if (user) {
+        try {
+          const res = await apiClient<{ followed: boolean }>(`/library/artists/${id}/status`);
+          setIsFollowed(res.followed);
+        } catch (err) {
+          console.error('Failed to check artist follow status:', err);
+        }
+      } else {
+        const localArtistsRaw = localStorage.getItem('zha-local-followed-artists');
+        const localArtists = localArtistsRaw ? JSON.parse(localArtistsRaw) : [];
+        const followed = localArtists.some((a: any) => a.channel_id === id);
+        setIsFollowed(followed);
+      }
+    };
+    checkFollowStatus();
+  }, [id, user, artist]);
+
+  const handleToggleFollow = async () => {
+    if (!artist) return;
+    const nextFollowed = !isFollowed;
+    setIsFollowed(nextFollowed);
+
+    if (user) {
+      try {
+        if (nextFollowed) {
+          await apiClient('/library/artists', {
+            method: 'POST',
+            body: JSON.stringify({
+              channel_id: id,
+              name: artist.name,
+              thumbnail_url: artist.thumbnail || artist.header_thumbnail
+            })
+          });
+        } else {
+          await apiClient(`/library/artists/${id}`, {
+            method: 'DELETE'
+          });
+        }
+        window.dispatchEvent(new CustomEvent('library-update'));
+      } catch (err) {
+        console.error('Failed to update artist follow status on backend:', err);
+        setIsFollowed(!nextFollowed); // revert
+      }
+    } else {
+      // Local fallback
+      const localArtistsRaw = localStorage.getItem('zha-local-followed-artists');
+      let localArtists = localArtistsRaw ? JSON.parse(localArtistsRaw) : [];
+      if (nextFollowed) {
+        localArtists.push({
+          channel_id: id,
+          name: artist.name,
+          thumbnail_url: artist.thumbnail || artist.header_thumbnail
+        });
+      } else {
+        localArtists = localArtists.filter((a: any) => a.channel_id !== id);
+      }
+      localStorage.setItem('zha-local-followed-artists', JSON.stringify(localArtists));
+      window.dispatchEvent(new CustomEvent('library-update'));
+    }
+  };
 
   if (isLoading) {
     return <ArtistSkeleton />;
@@ -79,6 +150,7 @@ export default function ArtistPage({ params }: ArtistPageProps) {
               fill
               className="object-cover opacity-60"
               priority
+              unoptimized
             />
           ) : (
             <div className="w-full h-full bg-zinc-900" />
@@ -87,21 +159,34 @@ export default function ArtistPage({ params }: ArtistPageProps) {
         </div>
         
         <div className="absolute bottom-0 left-0 p-8 z-10 w-full max-w-7xl mx-auto">
-          <div className="flex items-center gap-6 mb-4">
-            <h1 className="text-6xl md:text-8xl font-black truncate">{artist.name}</h1>
-            <SharePopover 
-              options={{ 
-                title: artist.name, 
-                text: `Check out ${artist.name}`, 
-                url: typeof window !== 'undefined' ? window.location.href : '' 
-              }}
-              align="left"
-              side="top"
-            >
-              <button className="p-3 bg-black/40 hover:bg-black/60 rounded-full text-white backdrop-blur-md transition-colors pointer-events-none">
-                <Share size={24} />
+          <div className="flex items-center gap-6 mb-4 flex-wrap">
+            <h1 className="text-6xl md:text-8xl font-black truncate max-w-full">{artist.name}</h1>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleToggleFollow}
+                className={cn(
+                  "px-6 py-2 rounded-full text-sm font-bold transition-all active:scale-95 border",
+                  isFollowed 
+                    ? "border-zinc-500 text-zinc-300 hover:border-white hover:text-white bg-transparent" 
+                    : "border-white bg-white text-black hover:bg-zinc-200"
+                )}
+              >
+                {isFollowed ? 'Following' : 'Follow'}
               </button>
-            </SharePopover>
+              <SharePopover 
+                options={{ 
+                  title: artist.name, 
+                  text: `Check out ${artist.name}`, 
+                  url: typeof window !== 'undefined' ? window.location.href : '' 
+                }}
+                align="left"
+                side="top"
+              >
+                <button className="p-3 bg-black/40 hover:bg-black/60 rounded-full text-white backdrop-blur-md transition-colors pointer-events-none">
+                  <Share size={24} />
+                </button>
+              </SharePopover>
+            </div>
           </div>
           {artist.description && (
             <p className="text-zinc-300 max-w-2xl line-clamp-3 text-lg">{artist.description}</p>
@@ -114,27 +199,32 @@ export default function ArtistPage({ params }: ArtistPageProps) {
         {artist.sections.map((section, idx) => {
           if (section.items.length === 0) return null;
 
-          // Render differently based on section type or items content
-          const isTracks = section.items[0]?.title && section.items[0]?.id && !section.items[0]?.year;
-          const isAlbums = section.items[0]?.year;
+          // Safe type detection — use section.type first, fall back to item field inspection
+          const isTrackShelf = section.type === 'MusicShelf'
+            || (section.items[0]?.duration !== undefined && !section.items[0]?.year);
+          const isAlbumCarousel = section.type === 'MusicCarouselShelf'
+            || section.type === 'MusicImmersiveCarousel'
+            || (!isTrackShelf && section.items[0]?.id);
 
           return (
             <section key={`${section.title}-${idx}`}>
               <h2 className="text-2xl font-bold mb-6">{section.title}</h2>
               
-              {section.type === 'MusicShelf' || isTracks ? (
+              {isTrackShelf ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
                   {section.items.slice(0, 10).map((track: any) => (
-                    <TrackItem key={track.id} track={track} />
+                    <TrackItem key={track.id} track={track} onClick={() => playTrack(track)} />
                   ))}
                 </div>
-              ) : (
+              ) : isAlbumCarousel ? (
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                  {section.items.map((item: any) => (
-                    <AlbumCard key={item.id} album={item} />
-                  ))}
+                  {section.items
+                    .filter((item: any) => item?.id && typeof item?.title === 'string')
+                    .map((item: any) => (
+                      <AlbumCard key={item.id} album={item} />
+                    ))}
                 </div>
-              )}
+              ) : null}
             </section>
           );
         })}

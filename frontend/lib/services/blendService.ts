@@ -1,20 +1,24 @@
+import { apiClient } from "@/lib/api/client";
+
 export const blendService = {
   getBlends: async () => {
-    const res = await fetch("/api/blend/list");
-    return res.json();
+    // Backend route: GET /blend/list (requires auth). Fall back to an empty
+    // list on error so the page renders its empty state instead of crashing.
+    try {
+      return await apiClient<unknown[]>("/blend/list");
+    } catch {
+      return [];
+    }
   },
   sendInvite: async (toUserId: number) => {
-    const res = await fetch("/api/blend/invite", {
+    return apiClient("/blend/invite", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ to_user_id: toUserId }),
     });
-    return res.json();
   },
   acceptInvite: async (inviteId: number) => {
-    const res = await fetch(`/api/blend/accept/${inviteId}`, {
+    return apiClient(`/blend/accept/${inviteId}`, {
       method: "POST",
     });
-    return res.json();
   },
 };

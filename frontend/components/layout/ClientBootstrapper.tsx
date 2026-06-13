@@ -2,9 +2,16 @@
 
 import { useEffect } from 'react';
 import { usePlaybackStore } from '@/lib/stores/playbackStore';
+import { useUserStore } from '@/lib/stores/userStore';
 
 export function ClientBootstrapper() {
   const playTrack = usePlaybackStore((state) => state.playTrack);
+  const checkSession = useUserStore((state) => state.checkSession);
+
+  // Restore the session on every page load (SRD: check /auth/me on every load)
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
 
   useEffect(() => {
     const cookies = document.cookie.split(';');

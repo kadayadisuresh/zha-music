@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { PlaylistCollabBoundary } from '@/components/playlist/PlaylistCollabBoundary';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -12,5 +13,5 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 export default function PlaylistLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return <PlaylistCollabBoundary>{children}</PlaylistCollabBoundary>;
 }

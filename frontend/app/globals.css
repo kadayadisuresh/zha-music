@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --background: #000000;
-  --foreground: #fffff0;
-  --bg-primary: #000000;
-  --accent-primary: #fffff0;
+  --background: #070b14;       /* deep navy (reads near-black) */
+  --foreground: #ffffff;       /* white text for readability */
+  --bg-primary: #070b14;
+  --accent-primary: #2e7df7;   /* electric blue accent */
 }
 
 @theme inline {
@@ -12,12 +12,43 @@
   --color-foreground: var(--foreground);
   --color-bg-primary: var(--bg-primary);
   --color-accent-primary: var(--accent-primary);
+
+  /* Brand accent → electric blue.
+     The app uses red-600/red-700 as its accent (logo, progress bar, active
+     nav, primary/play buttons, spinners, focus borders). Remap centrally.
+     Destructive/error states use red-400 / red-500 / red-950 and stay red. */
+  --color-red-600: #2e7df7;
+  --color-red-700: #1f5fd0;    /* darker blue for hover */
+  --color-primary: #2e7df7;
+
+  /* Shift the dark neutrals toward navy so the whole UI reads blue-black,
+     like a deep-night theme. Light zinc shades (text) are left untouched. */
+  --color-black: #070b14;
+  --color-zinc-950: #0b1120;
+  --color-zinc-900: #111a2e;
+  --color-zinc-800: #1b2540;
+  --color-zinc-700: #28344e;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
+  /* Deep navy base with a soft electric-blue glow at the top, echoing the
+     reference design. */
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(46, 125, 247, 0.20), transparent 60%),
+    var(--background);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Hide scrollbars on horizontally/vertically scrollable strips that opt in. */
+.no-scrollbar {
+  -ms-overflow-style: none;   /* IE/Edge */
+  scrollbar-width: none;       /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;               /* Chrome/Safari */
 }

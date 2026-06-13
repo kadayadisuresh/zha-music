@@ -24,6 +24,7 @@ export const ArtistCircle: React.FC<ArtistCircleProps> = ({ artist }) => {
             alt={artist.name}
             fill
             className="object-cover rounded-full shadow-lg"
+            unoptimized
           />
         ) : (
           <div className="w-full h-full bg-zinc-800 rounded-full" />

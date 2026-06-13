@@ -8,6 +8,12 @@ Create Date: 2026-05-26 15:55:00.000000
 from alembic import op
 import sqlalchemy as sa
 
+# revision identifiers, used by Alembic.
+revision = '003'
+down_revision = '002'
+branch_labels = None
+depends_on = None
+
 
 def upgrade():
     op.add_column('playlists', sa.Column('is_collaborative', sa.Boolean(), nullable=False, server_default=sa.text('false')))

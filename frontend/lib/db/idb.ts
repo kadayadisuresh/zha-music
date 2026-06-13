@@ -1,6 +1,7 @@
 import { openDB, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'zha-offline';
+const DB_VERSION = 31;
 const STORE_META = 'zha-downloads-meta';
 const STORE_AUDIO = 'zha-downloads-audio';
 
@@ -15,10 +16,29 @@ export interface DownloadMeta {
 
 let dbPromise: Promise<IDBPDatabase<any>>;
 
-export const initDB = () => {
+export const initDB = async () => {
   if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, 1, {
-      upgrade(db) {
+    // Get the current version from the browser first to avoid VersionError
+    const currentVersion = await new Promise<number>((resolve) => {
+      if (typeof indexedDB === 'undefined') {
+        resolve(0);
+        return;
+      }
+      const req = indexedDB.open(DB_NAME);
+      req.onsuccess = () => {
+        const version = req.result.version;
+        req.result.close();
+        resolve(version);
+      };
+      req.onerror = () => resolve(0);
+    });
+
+    // Use whichever is higher — never downgrade
+    const targetVersion = Math.max(currentVersion, DB_VERSION);
+
+    dbPromise = openDB(DB_NAME, targetVersion, {
+      upgrade(db, oldVersion, newVersion) {
+        console.log(`Upgrading IndexedDB from ${oldVersion} to ${newVersion}`);
         if (!db.objectStoreNames.contains(STORE_META)) {
           const metaStore = db.createObjectStore(STORE_META, { keyPath: 'videoId' });
           metaStore.createIndex('downloadedAt', 'downloadedAt');

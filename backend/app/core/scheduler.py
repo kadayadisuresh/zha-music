@@ -1,24 +1,29 @@
 import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from app.db.session import SessionLocal
+from app.db.database import AsyncSessionLocal
 from app.models.blend import Blend
-# Import other necessary models or services for blend calculation
+from sqlalchemy import select
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def recompute_blends():
+async def recompute_blends():
     logger.info("Starting daily blend recomputation job")
-    db = SessionLocal()
-    try:
-        blends = db.query(Blend).all()
-        for blend in blends:
-            # Recompute logic here
-            logger.info(f"Recomputing blend {blend.id}")
-    except Exception as e:
-        logger.error(f"Error recomputing blends: {e}")
-    finally:
-        db.close()
+    async with AsyncSessionLocal() as db:
+        try:
+            # Imported here to avoid a circular import at module load time
+            from app.api.blend import compute_match
+            result = await db.execute(select(Blend))
+            blends = result.scalars().all()
+            for blend in blends:
+                match = await compute_match(db, blend.user1_id, blend.user2_id)
+                logger.info(
+                    f"Blend {blend.id}: match={match['match_percentage']}% "
+                    f"(enough_data={match['enough_data']})"
+                )
+            await db.commit()
+        except Exception as e:
+            logger.error(f"Error recomputing blends: {e}")
     logger.info("Finished daily blend recomputation job")
 
 def register_scheduler():

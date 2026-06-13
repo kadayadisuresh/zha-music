@@ -62,26 +62,26 @@ export default function InstallPrompt() {
   if (!showPrompt) return null;
 
   return (
-    <div className="fixed bottom-24 left-4 right-4 md:left-auto md:right-8 md:w-96 z-[100] bg-[#1a1a1a] border border-[#f5f0e8]/10 rounded-xl p-4 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="fixed bottom-24 left-4 right-4 md:left-auto md:right-8 md:w-96 z-[100] bg-[#111a2e] border border-[#2E7DF7]/10 rounded-xl p-4 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-start gap-4">
-        <div className="bg-[#f5f0e8] p-3 rounded-lg">
+        <div className="bg-[#2E7DF7] p-3 rounded-lg">
           <Download className="w-6 h-6 text-black" />
         </div>
         <div className="flex-1">
-          <h3 className="font-bold text-[#f5f0e8] text-lg">Install ZHA Better</h3>
-          <p className="text-sm text-[#f5f0e8]/70 mt-1">
+          <h3 className="font-bold text-[#2E7DF7] text-lg">Install ZHA Better</h3>
+          <p className="text-sm text-[#2E7DF7]/70 mt-1">
             Install our app for a better experience, offline support, and quick access.
           </p>
           <div className="flex gap-3 mt-4">
             <button
               onClick={handleInstall}
-              className="flex-1 bg-[#f5f0e8] text-black font-semibold py-2 px-4 rounded-full text-sm hover:bg-[#f5f0e8]/90 transition-colors"
+              className="flex-1 bg-[#2E7DF7] text-white font-semibold py-2 px-4 rounded-full text-sm hover:bg-[#2E7DF7]/90 transition-colors"
             >
               Install
             </button>
             <button
               onClick={handleDismiss}
-              className="px-4 py-2 text-sm font-semibold text-[#f5f0e8]/70 hover:text-[#f5f0e8] transition-colors"
+              className="px-4 py-2 text-sm font-semibold text-[#2E7DF7]/70 hover:text-[#2E7DF7] transition-colors"
             >
               Not now
             </button>
@@ -89,7 +89,7 @@ export default function InstallPrompt() {
         </div>
         <button 
           onClick={handleDismiss}
-          className="text-[#f5f0e8]/40 hover:text-[#f5f0e8]"
+          className="text-[#2E7DF7]/40 hover:text-[#2E7DF7]"
         >
           <X className="w-5 h-5" />
         </button>

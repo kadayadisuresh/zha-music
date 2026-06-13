@@ -7,6 +7,13 @@ Create Date: 2026-05-27 10:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+# revision identifiers, used by Alembic.
+revision = '004'
+down_revision = '003'
+branch_labels = None
+depends_on = None
 
 
 def upgrade():
@@ -14,7 +21,7 @@ def upgrade():
         'jam_sessions',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('join_code', sa.String(length=8), nullable=False),
-        sa.Column('host_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=False),
+        sa.Column('host_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id'), nullable=False),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_jam_sessions_id'), 'jam_sessions', ['id'], unique=False)
@@ -24,7 +31,7 @@ def upgrade():
         'jam_participants',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('session_id', sa.Integer(), sa.ForeignKey('jam_sessions.id'), nullable=False),
-        sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=False),
+        sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id'), nullable=False),
         sa.Column('role', sa.String(length=10), nullable=False),
         sa.PrimaryKeyConstraint('id')
     )

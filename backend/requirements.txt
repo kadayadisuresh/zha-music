@@ -1,8 +1,15 @@
 fastapi
 uvicorn
+websockets
 asyncpg
 sqlalchemy
 alembic
 pydantic-settings
 pyjwt
 httpx
+yt-dlp
+ytmusicapi
+apscheduler
+
+
+python-multipart

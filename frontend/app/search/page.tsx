@@ -7,11 +7,12 @@ import { SearchSkeleton } from '@/components/search/SearchSkeleton';
 import { TrackItem } from '@/components/shared/TrackItem';
 import { AlbumCard } from '@/components/shared/AlbumCard';
 import { ArtistCircle } from '@/components/shared/ArtistCircle';
-import { SearchBar } from '@/components/search/SearchBar';
+import { usePlaybackStore } from '@/lib/stores/playbackStore';
 
 function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
+  const playTrack = usePlaybackStore((state) => state.playTrack);
   
   const [results, setResults] = useState<SearchResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,9 +44,6 @@ function SearchContent() {
 
   return (
     <div className="flex flex-col min-h-screen bg-black text-white p-6 pb-24">
-      <div className="mb-8 flex justify-center">
-        <SearchBar isLoading={isLoading} />
-      </div>
 
       {!query && (
         <div className="flex flex-col items-center justify-center flex-1 text-zinc-500">
@@ -71,8 +69,8 @@ function SearchContent() {
             <section>
               <h2 className="text-2xl font-bold mb-4">Songs</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
-                {results.songs.slice(0, 10).map((song) => (
-                  <TrackItem key={song.id} track={song} />
+              {results.songs.slice(0, 10).map((song, idx) => (
+                  <TrackItem key={`${song.id}-${idx}`} track={song} onClick={() => playTrack(song)} />
                 ))}
               </div>
             </section>
@@ -83,8 +81,8 @@ function SearchContent() {
             <section>
               <h2 className="text-2xl font-bold mb-4">Albums</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                {results.albums.slice(0, 6).map((album) => (
-                  <AlbumCard key={album.id} album={album} />
+                {results.albums.slice(0, 6).map((album, idx) => (
+                  <AlbumCard key={`${album.id}-${idx}`} album={album} />
                 ))}
               </div>
             </section>
@@ -95,8 +93,8 @@ function SearchContent() {
             <section>
               <h2 className="text-2xl font-bold mb-4">Artists</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                {results.artists.slice(0, 6).map((artist) => (
-                  <ArtistCircle key={artist.id} artist={artist} />
+                {results.artists.slice(0, 6).map((artist, idx) => (
+                  <ArtistCircle key={`${artist.id}-${idx}`} artist={artist} />
                 ))}
               </div>
             </section>

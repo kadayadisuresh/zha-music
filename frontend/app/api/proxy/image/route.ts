@@ -46,14 +46,15 @@ export async function GET(request: NextRequest) {
 
     let dominantColorHex = '#121212'; // Default dark
     try {
-      // ColorThief.getColor expects a path or a Buffer in Node.js
-      // Note: ColorThief might be slow for large images.
+      // ColorThief.getColor requires 'sharp' to be installed.
+      // If it fails, we silently fall back to the default color.
       const color = await ColorThief.getColor(buffer);
       if (color) {
         dominantColorHex = rgbToHex(color[0], color[1], color[2]);
       }
-    } catch (colorError) {
-      console.error('[Image Proxy] Color extraction failed:', colorError);
+    } catch {
+      // Color extraction is optional — sharp may not be installed.
+      // Silently fall back to default color.
     }
 
     return new NextResponse(buffer, {

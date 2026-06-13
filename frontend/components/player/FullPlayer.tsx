@@ -1,10 +1,12 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, MoreVertical, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ChevronDown, MoreVertical, ThumbsUp, ThumbsDown, Download } from "lucide-react";
 import { usePlaybackStore } from "@/lib/stores/playbackStore";
 import { useUIStore } from "@/lib/stores/uiStore";
+import { useDownloadStore } from "@/lib/stores/downloadStore";
 import { PlayerControls } from "./PlayerControls";
 import { ProgressBar } from "./ProgressBar";
 import { useAdaptiveColor } from "@/lib/hooks/useAdaptiveColor";
@@ -12,22 +14,36 @@ import { AdaptiveBackground } from "@/components/ui/AdaptiveBackground";
 import { Button } from "@/components/ui/Button";
 import { formatTime, cn } from "@/lib/utils";
 import { QueueList } from "../queue/QueueList";
+import { LyricsView } from "./LyricsView";
+import { TrackContextMenu } from "../shared/TrackContextMenu";
+import { JamIndicator } from "@/components/jam/JamIndicator";
 
 export const FullPlayer: React.FC = () => {
-  const { currentTrack, currentTime, duration } = usePlaybackStore();
+  const { currentTrack, currentTime, duration, toggleLikeTrack, isTrackLiked } = usePlaybackStore();
   const { isPlayerExpanded, setPlayerExpanded } = useUIStore();
+  const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number } | null>(null);
+  const { startDownload, deleteDownload, isDownloaded, isDownloading, activeDownloads, initialize } = useDownloadStore();
+
+  React.useEffect(() => {
+    initialize();
+  }, [initialize]);
+
   const [activeTab, setActiveTab] = React.useState<'up-next' | 'lyrics' | 'related'>('up-next');
+  const [isDisliked, setIsDisliked] = React.useState(false);
   const color = useAdaptiveColor(currentTrack?.thumbnail);
 
   if (!currentTrack) return null;
 
   const handleDismiss = () => setPlayerExpanded(false);
+  const isLiked = isTrackLiked(currentTrack.id);
 
   return (
-    <AnimatePresence>
-      {isPlayerExpanded && (
-        <motion.div
-          initial={{ y: "100%" }}
+    <>
+      <AnimatePresence>
+        {isPlayerExpanded && (
+          <motion.div
+            key="full-player"
+            initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 300, mass: 0.8 }}
@@ -62,13 +78,25 @@ export const FullPlayer: React.FC = () => {
               <Button variant="ghost" size="sm" onClick={handleDismiss} className="text-white md:hidden">
                 <ChevronDown size={28} />
               </Button>
-              <div className="flex-1 text-center md:text-left md:px-4">
+              <div className="flex-1 flex items-center justify-center md:justify-start gap-3 md:px-4">
                 <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Now Playing</h2>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <JamIndicator />
+                </div>
               </div>
               <Button variant="ghost" size="sm" onClick={handleDismiss} className="text-white hidden md:flex">
                 <ChevronDown size={24} />
               </Button>
-              <Button variant="ghost" size="sm" className="text-white">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Opens a bottom sheet (position is ignored in sheet mode).
+                  setContextMenu({ x: 0, y: 0 });
+                }}
+              >
                 <MoreVertical size={24} />
               </Button>
             </div>
@@ -103,9 +131,9 @@ export const FullPlayer: React.FC = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className="flex flex-col items-center justify-center h-full p-8 text-white/40"
+                    className="h-full overflow-hidden p-6 md:p-8"
                   >
-                    <p className="text-center">Lyrics are not available for this track yet.</p>
+                    <LyricsView />
                   </motion.div>
                 ) : (
                   /* Now Playing (Default/Related placeholder) */
@@ -119,17 +147,19 @@ export const FullPlayer: React.FC = () => {
                     {/* Album Art */}
                     <motion.div 
                       layoutId="player-thumb"
-                      className="relative aspect-square w-full max-w-[320px] md:max-w-full shadow-2xl shadow-black/50"
+                      className="relative aspect-square w-full max-w-[320px] md:max-w-full shadow-2xl shadow-black/50 overflow-hidden rounded-lg"
                     >
-                      <img 
+                      <Image 
                         src={currentTrack.thumbnail || '/placeholder-album.png'} 
                         alt={currentTrack.title}
-                        className="w-full h-full object-cover rounded-lg"
+                        fill
+                        className="object-cover"
+                        unoptimized
                       />
                     </motion.div>
 
                     {/* Metadata & Actions */}
-                    <div className="w-full flex flex-col gap-4">
+                    <div className="w-full flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <h1 className="text-xl md:text-2xl font-bold text-white truncate">
@@ -140,11 +170,54 @@ export const FullPlayer: React.FC = () => {
                           </p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
-                          <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white p-2">
-                            <ThumbsDown size={20} />
+                          {currentTrack && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className={cn(
+                                "p-2 transition-colors", 
+                                isDownloaded(currentTrack.id) 
+                                  ? "text-green-500 hover:text-green-400" 
+                                  : isDownloading(currentTrack.id) 
+                                    ? "text-red-500 hover:text-red-400" 
+                                    : "text-zinc-400 hover:text-white"
+                              )}
+                              onClick={() => {
+                                if (isDownloaded(currentTrack.id)) {
+                                  deleteDownload(currentTrack.id);
+                                } else if (!isDownloading(currentTrack.id)) {
+                                  startDownload(currentTrack);
+                                }
+                              }}
+                            >
+                              {isDownloading(currentTrack.id) ? (
+                                <span className="text-[10px] font-bold">{activeDownloads[currentTrack.id] || 0}%</span>
+                              ) : (
+                                <Download size={20} fill={isDownloaded(currentTrack.id) ? "currentColor" : "none"} />
+                              )}
+                            </Button>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className={cn("p-2 transition-colors", isDisliked ? "text-red-500 hover:text-red-400" : "text-zinc-400 hover:text-white")}
+                            onClick={() => {
+                              setIsDisliked(!isDisliked);
+                              if (isLiked) toggleLikeTrack(currentTrack);
+                            }}
+                          >
+                            <ThumbsDown size={20} fill={isDisliked ? "currentColor" : "none"} />
                           </Button>
-                          <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white p-2">
-                            <ThumbsUp size={20} />
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className={cn("p-2 transition-colors", isLiked ? "text-[#2E7DF7] hover:text-[#2E7DF7]/80" : "text-zinc-400 hover:text-white")}
+                            onClick={() => {
+                              toggleLikeTrack(currentTrack);
+                              if (isDisliked) setIsDisliked(false);
+                            }}
+                          >
+                            <ThumbsUp size={20} fill={isLiked ? "currentColor" : "none"} />
                           </Button>
                         </div>
                       </div>
@@ -155,7 +228,7 @@ export const FullPlayer: React.FC = () => {
             </div>
 
             {/* Controls & Progress Area */}
-            <div className="p-6 md:p-8 flex flex-col gap-6 bg-gradient-to-t from-black/80 to-transparent shrink-0">
+            <div className="p-6 md:p-8 flex flex-col gap-6 bg-gradient-to-t from-black/80 to-transparent shrink-0" onClick={(e) => e.stopPropagation()}>
               <div className="flex flex-col gap-1">
                 <ProgressBar />
                 <div className="flex justify-between text-[10px] md:text-xs font-medium text-zinc-400 mt-1">
@@ -196,7 +269,17 @@ export const FullPlayer: React.FC = () => {
             onClick={handleDismiss}
           />
         </motion.div>
+        )}
+      </AnimatePresence>
+      {contextMenu && currentTrack && (
+        <TrackContextMenu
+          track={currentTrack}
+          variant="sheet"
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          onNavigate={handleDismiss}
+          onClose={() => setContextMenu(null)}
+        />
       )}
-    </AnimatePresence>
+    </>
   );
 };

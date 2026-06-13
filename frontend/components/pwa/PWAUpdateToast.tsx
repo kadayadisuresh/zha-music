@@ -12,6 +12,22 @@ export default function PWAUpdateToast() {
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
+    // In development, the service worker is intentionally disabled (see
+    // next.config.ts `disable: development`). But a SW registered by a previous
+    // production build keeps auto-updating itself from the stale `/sw.js`
+    // artifact and serves a cached bundle — so code fixes never reach the
+    // browser ("I keep fixing it but nothing changes"). Self-heal by
+    // unregistering every SW and clearing its caches once on load.
+    if (process.env.NODE_ENV !== 'production') {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(r => r.unregister());
+      });
+      if ('caches' in window) {
+        caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+      }
+      return;
+    }
+
     navigator.serviceWorker.ready.then(reg => {
       setRegistration(reg);
 
@@ -67,7 +83,7 @@ export default function PWAUpdateToast() {
 
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md animate-in fade-in slide-in-from-top-4 duration-500">
-      <div className="bg-[#f5f0e8] text-black rounded-full px-4 py-3 shadow-2xl flex items-center justify-between gap-4 border border-black/10">
+      <div className="bg-[#2E7DF7] text-white rounded-full px-4 py-3 shadow-2xl flex items-center justify-between gap-4 border border-black/10">
         <div className="flex items-center gap-3">
           <div className="bg-black/10 p-2 rounded-full animate-spin-slow">
             <RefreshCw className="w-4 h-4" />

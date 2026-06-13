@@ -7,7 +7,10 @@ import { SharePopover } from '@/components/shared/SharePopover';
 import { useUIStore } from '@/lib/stores/uiStore';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Share } from 'lucide-react';
+import { Share, Heart } from 'lucide-react';
+import { useUserStore } from '@/lib/stores/userStore';
+import { apiClient } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
 
 interface AlbumPageProps {
   params: Promise<{ id: string }>;
@@ -19,6 +22,8 @@ export default function AlbumPage({ params }: AlbumPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const setActiveThumbnail = useUIStore((state) => state.setActiveThumbnail);
+  const { user } = useUserStore();
+  const [isLiked, setIsLiked] = useState(false);
 
   useEffect(() => {
     const fetchAlbum = async () => {
@@ -46,6 +51,72 @@ export default function AlbumPage({ params }: AlbumPageProps) {
     // Reset background when leaving
     return () => setActiveThumbnail(null);
   }, [id, setActiveThumbnail]);
+
+  useEffect(() => {
+    const checkLikedStatus = async () => {
+      if (!album) return;
+      if (user) {
+        try {
+          const res = await apiClient<{ liked: boolean }>(`/library/albums/${id}/status`);
+          setIsLiked(res.liked);
+        } catch (err) {
+          console.error('Failed to check album liked status:', err);
+        }
+      } else {
+        const localAlbumsRaw = localStorage.getItem('zha-local-liked-albums');
+        const localAlbums = localAlbumsRaw ? JSON.parse(localAlbumsRaw) : [];
+        const liked = localAlbums.some((a: any) => a.album_id === id);
+        setIsLiked(liked);
+      }
+    };
+    checkLikedStatus();
+  }, [id, user, album]);
+
+  const handleToggleLike = async () => {
+    if (!album) return;
+    const nextLiked = !isLiked;
+    setIsLiked(nextLiked);
+
+    if (user) {
+      try {
+        if (nextLiked) {
+          await apiClient('/library/albums', {
+            method: 'POST',
+            body: JSON.stringify({
+              album_id: id,
+              title: album.title,
+              artist_name: album.artists.map(a => a.name).join(', '),
+              thumbnail_url: album.thumbnail
+            })
+          });
+        } else {
+          await apiClient(`/library/albums/${id}`, {
+            method: 'DELETE'
+          });
+        }
+        window.dispatchEvent(new CustomEvent('library-update'));
+      } catch (err) {
+        console.error('Failed to update album liked status on backend:', err);
+        setIsLiked(!nextLiked); // revert state
+      }
+    } else {
+      // Local fallback
+      const localAlbumsRaw = localStorage.getItem('zha-local-liked-albums');
+      let localAlbums = localAlbumsRaw ? JSON.parse(localAlbumsRaw) : [];
+      if (nextLiked) {
+        localAlbums.push({
+          album_id: id,
+          title: album.title,
+          artist_name: album.artists.map(a => a.name).join(', '),
+          thumbnail_url: album.thumbnail
+        });
+      } else {
+        localAlbums = localAlbums.filter((a: any) => a.album_id !== id);
+      }
+      localStorage.setItem('zha-local-liked-albums', JSON.stringify(localAlbums));
+      window.dispatchEvent(new CustomEvent('library-update'));
+    }
+  };
 
   if (isLoading) {
     return (
@@ -81,6 +152,7 @@ export default function AlbumPage({ params }: AlbumPageProps) {
               fill
               className="object-cover rounded-md"
               priority
+              unoptimized
             />
           ) : (
             <div className="w-full h-full bg-zinc-900 rounded-md" />
@@ -90,19 +162,30 @@ export default function AlbumPage({ params }: AlbumPageProps) {
         <div className="flex flex-col gap-2 w-full">
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm font-bold uppercase tracking-wider">Album</span>
-            <SharePopover 
-              options={{ 
-                title: album.title, 
-                text: `Check out the album ${album.title}`, 
-                url: typeof window !== 'undefined' ? window.location.href : '' 
-              }}
-              align="right"
-              side="bottom"
-            >
-              <button className="p-3 bg-black/40 hover:bg-black/60 rounded-full text-white backdrop-blur-md transition-colors pointer-events-none flex-shrink-0">
-                <Share size={24} />
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleToggleLike}
+                className={cn(
+                  "p-3 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-all active:scale-95",
+                  isLiked ? "text-red-650" : "text-white"
+                )}
+              >
+                <Heart size={24} fill={isLiked ? "currentColor" : "none"} className={cn(isLiked && "text-red-600 fill-red-600")} />
               </button>
-            </SharePopover>
+              <SharePopover 
+                options={{ 
+                  title: album.title, 
+                  text: `Check out the album ${album.title}`, 
+                  url: typeof window !== 'undefined' ? window.location.href : '' 
+                }}
+                align="right"
+                side="bottom"
+              >
+                <button className="p-3 bg-black/40 hover:bg-black/60 rounded-full text-white backdrop-blur-md transition-colors pointer-events-none flex-shrink-0">
+                  <Share size={24} />
+                </button>
+              </SharePopover>
+            </div>
           </div>
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-black mb-2">{album.title}</h1>
           <div className="flex items-center gap-2 text-zinc-300">

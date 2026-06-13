@@ -1,72 +1,80 @@
 'use client';
 
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { usePlaybackStore } from '@/lib/stores/playbackStore';
+import { useJamStore } from '@/lib/stores/jamStore';
 import { audioEngine } from '@/lib/audio/AudioEngine';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 
 interface ProgressBarProps {
   isMini?: boolean;
 }
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({ isMini = false }) => {
-  const { currentTime, duration } = usePlaybackStore();
+  const duration = usePlaybackStore((s) => s.duration);
+  // In a Jam, only the host can scrub; guests follow the host's position.
+  const isGuest = useJamStore((s) => s.active && !s.isHost);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragProgress, setDragProgress] = useState(0);
+  const isDraggingRef = useRef(false);
 
-  const progress = isDragging ? dragProgress : (currentTime / duration) || 0;
+  // Progress as a motion value (0..1) driven imperatively — updating it does
+  // not trigger React re-renders, so the fill animates on the compositor at
+  // the audio engine's 60fps update rate without any spring lag.
+  const progress = useMotionValue(0);
+  const handleLeft = useTransform(progress, (v) => `${v * 100}%`);
 
-  const handleSeek = useCallback((e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
-    if (!progressBarRef.current || duration === 0) return;
+  const posFromClientX = (clientX: number) => {
+    const rect = progressBarRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0) return 0;
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  };
 
-    const rect = progressBarRef.current.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
-    const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    
-    if (isDragging) {
-      setDragProgress(pos);
-    } else {
-      audioEngine.seek(pos * duration);
-    }
-  }, [duration, isDragging]);
+  // Follow playback. usePlaybackStore.subscribe fires whenever currentTime
+  // updates (~60fps while playing); we skip updates mid-drag so the user's
+  // scrub position isn't overwritten.
+  useEffect(() => {
+    const sync = () => {
+      if (isDraggingRef.current) return;
+      const { currentTime, duration } = usePlaybackStore.getState();
+      progress.set(duration ? Math.min(1, currentTime / duration) : 0);
+    };
+    sync();
+    return usePlaybackStore.subscribe(sync);
+  }, [progress]);
 
   const onMouseDown = (e: React.MouseEvent) => {
+    if (duration === 0 || isGuest) return;
     setIsDragging(true);
-    handleSeek(e);
+    isDraggingRef.current = true;
+    progress.set(posFromClientX(e.clientX));
   };
 
   useEffect(() => {
-    if (isDragging) {
-      const handleMouseMove = (e: MouseEvent) => {
-        const rect = progressBarRef.current?.getBoundingClientRect();
-        if (!rect || duration === 0) return;
-        const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-        setDragProgress(pos);
-      };
+    if (!isDragging) return;
 
-      const handleMouseUp = (e: MouseEvent) => {
-        const rect = progressBarRef.current?.getBoundingClientRect();
-        if (rect && duration > 0) {
-          const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-          audioEngine.seek(pos * duration);
-        }
-        setIsDragging(false);
-      };
+    const handleMouseMove = (e: MouseEvent) => {
+      progress.set(posFromClientX(e.clientX));
+    };
+    const handleMouseUp = (e: MouseEvent) => {
+      const pos = posFromClientX(e.clientX);
+      if (duration > 0) audioEngine.seek(pos * duration);
+      setIsDragging(false);
+      isDraggingRef.current = false;
+    };
 
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging, duration]);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, duration, progress]);
 
   return (
-    <div 
-      className={`relative w-full cursor-pointer group ${isMini ? 'h-[3px]' : 'h-1 py-4'}`}
+    <div
+      className={`relative w-full group ${isGuest ? 'cursor-default' : 'cursor-pointer'} ${isMini ? 'h-[3px]' : 'h-1 py-4'}`}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onMouseDown={onMouseDown}
@@ -74,19 +82,18 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ isMini = false }) => {
     >
       {/* Background track */}
       <div className={`absolute inset-0 bg-white/10 ${isMini ? '' : 'top-1/2 -translate-y-1/2 h-1 rounded-full'}`} />
-      
+
       {/* Progress track */}
-      <motion.div 
+      <motion.div
         className={`absolute inset-0 bg-red-600 origin-left ${isMini ? '' : 'top-1/2 -translate-y-1/2 h-1 rounded-full'}`}
         style={{ scaleX: progress }}
-        transition={{ type: 'spring', bounce: 0, duration: isDragging ? 0 : 0.1 }}
       />
 
       {/* Scrub handle - only for non-mini or on hover */}
       {(!isMini || isHovering || isDragging) && (
-        <motion.div 
+        <motion.div
           className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-red-600 rounded-full -ml-1.5 shadow-md"
-          style={{ left: `${progress * 100}%` }}
+          style={{ left: handleLeft }}
           initial={{ scale: 0 }}
           animate={{ scale: isHovering || isDragging ? 1 : 0 }}
           transition={{ duration: 0.1 }}

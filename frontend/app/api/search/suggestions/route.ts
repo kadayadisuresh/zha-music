@@ -12,14 +12,24 @@ export async function GET(request: NextRequest) {
 
   try {
     const yt = await getInnertube();
+    if (!yt) {
+      return NextResponse.json([]);
+    }
     const suggestions = await yt.music.getSearchSuggestions(query);
-    
-    // Flatten suggestions from all sections
-    const flatSuggestions = suggestions.flatMap(section => 
-      section.contents.map(item => (typeof (item as any).text === 'string' ? (item as any).text : (item as any).text?.text))
-    ).filter(Boolean);
 
-    return NextResponse.json(flatSuggestions);
+    // Each section's contents are SearchSuggestion / HistorySuggestion nodes,
+    // whose `suggestion` is a Text object exposing the string on `.text`.
+    const flatSuggestions = suggestions
+      .flatMap(section =>
+        section.contents.map(item => {
+          const node = item as any;
+          return node?.suggestion?.text ?? (typeof node?.text === 'string' ? node.text : node?.text?.text);
+        })
+      )
+      .filter((s: unknown): s is string => typeof s === 'string' && s.length > 0);
+
+    // De-duplicate while preserving order
+    return NextResponse.json([...new Set(flatSuggestions)]);
   } catch (error) {
     console.error('[Suggestions API] Error:', error);
     return NextResponse.json({ error: 'Failed to fetch suggestions' }, { status: 500 });

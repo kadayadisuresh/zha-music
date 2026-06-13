@@ -8,6 +8,9 @@ import { ClientBootstrapper } from "@/components/layout/ClientBootstrapper";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import PWAUpdateToast from "@/components/pwa/PWAUpdateToast";
 import { PlaybackAnnouncer } from "@/components/player/PlaybackAnnouncer";
+import { JamController } from "@/components/jam/JamController";
+import { JamModal } from "@/components/jam/JamModal";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,9 +24,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "YouTube Music Clone",
-  description: "ZHA Better - YouTube Music Clone",
+  title: "Zha",
+  description: "Zha — a better music experience",
+  icons: {
+    icon: "/logo.jpeg",
+    shortcut: "/logo.jpeg",
+    apple: "/logo.jpeg",
+  },
 };
+
+import { MainLayout } from "@/components/layout/MainLayout";
 
 export default function RootLayout({
   children,
@@ -33,7 +43,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col antialiased bg-black text-[#fffff0]`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col antialiased bg-black text-white`}
       >
         <ClientBootstrapper />
         <PlaybackAnnouncer />
@@ -41,11 +51,14 @@ export default function RootLayout({
         <OfflineBanner />
         <PWAUpdateToast />
         <InstallPrompt />
-        <main className="flex-1 pb-[72px]">
+        <MainLayout>
           {children}
-        </main>
+        </MainLayout>
         <MiniPlayer />
         <FullPlayer />
+        <MobileBottomNav />
+        <JamController />
+        <JamModal />
       </body>
     </html>
   );

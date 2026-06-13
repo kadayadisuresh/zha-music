@@ -18,7 +18,7 @@ GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
-REDIRECT_URI = "http://localhost:8000/auth/google/callback"
+REDIRECT_URI = settings.GOOGLE_REDIRECT_URI
 
 @router.get("/google")
 async def login_google():
@@ -39,7 +39,7 @@ async def login_google():
         key="oauth_state",
         value=state,
         httponly=True,
-        secure=True, # In development this usually needs to be false if not HTTPS, but following instructions
+        secure=settings.FRONTEND_URL.startswith("https://"),
         samesite="lax",
         max_age=600 # 10 mins
     )
@@ -63,7 +63,9 @@ async def google_callback(request: Request, code: str, state: str, db: AsyncSess
     async with httpx.AsyncClient() as client:
         token_res = await client.post(GOOGLE_TOKEN_URL, data=token_data)
         if token_res.status_code != 200:
-            raise HTTPException(status_code=400, detail="Failed to exchange code for token")
+            error_detail = token_res.json()
+            print(f"Google Token Exchange Error: {error_detail}")
+            raise HTTPException(status_code=400, detail=f"Failed to exchange code for token: {error_detail}")
             
         access_token = token_res.json().get("access_token")
         
@@ -118,7 +120,7 @@ async def google_callback(request: Request, code: str, state: str, db: AsyncSess
         key="access_token",
         value=jwt_token,
         httponly=True,
-        secure=True,
+        secure=settings.FRONTEND_URL.startswith("https://"),
         samesite="strict"
     )
     # Delete the cookies
@@ -143,7 +145,7 @@ async def logout():
     response.delete_cookie(
         key="access_token",
         httponly=True,
-        secure=True,
+        secure=settings.FRONTEND_URL.startswith("https://"),
         samesite="strict"
     )
     return response

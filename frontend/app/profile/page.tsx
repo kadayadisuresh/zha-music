@@ -46,14 +46,6 @@ export default function ProfilePage() {
         
         <div className="mb-8 flex flex-col space-y-2 text-zinc-600 dark:text-zinc-400">
           <p className="font-medium text-zinc-900 dark:text-zinc-100">{user.email}</p>
-          <div className="flex justify-center space-x-2 text-sm">
-            <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-              {user.is_superuser ? 'Admin' : 'User'}
-            </span>
-            <span className={`rounded-full px-2.5 py-0.5 ${user.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-              {user.is_active ? 'Active' : 'Inactive'}
-            </span>
-          </div>
         </div>
 
         <Button

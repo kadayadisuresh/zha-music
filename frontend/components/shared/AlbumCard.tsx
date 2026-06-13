@@ -24,6 +24,7 @@ export const AlbumCard: React.FC<AlbumCardProps> = ({ album }) => {
             alt={album.title}
             fill
             className="object-cover rounded-md shadow-lg"
+            unoptimized
           />
         ) : (
           <div className="w-full h-full bg-zinc-800 rounded-md" />

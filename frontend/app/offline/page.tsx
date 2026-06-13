@@ -50,34 +50,34 @@ export default function OfflinePage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 text-center">
-      <div className="bg-[#f5f0e8]/5 p-8 rounded-full mb-8">
-        <WifiOff className="w-16 h-16 text-[#f5f0e8]/40" />
+      <div className="bg-[#2E7DF7]/5 p-8 rounded-full mb-8">
+        <WifiOff className="w-16 h-16 text-[#2E7DF7]/40" />
       </div>
       
-      <h1 className="text-3xl font-bold mb-4 text-[#f5f0e8]">You're offline</h1>
+      <h1 className="text-3xl font-bold mb-4 text-[#2E7DF7]">You're offline</h1>
       
       {hasDownloads === null ? (
-        <div className="h-6 w-48 bg-[#f5f0e8]/10 animate-pulse rounded" />
+        <div className="h-6 w-48 bg-[#2E7DF7]/10 animate-pulse rounded" />
       ) : hasDownloads ? (
         <>
-          <p className="text-[#f5f0e8]/60 mb-8 max-w-md">
+          <p className="text-[#2E7DF7]/60 mb-8 max-w-md">
             No internet connection detected. Redirecting to your downloaded music in {countdown}s...
           </p>
           <button
             onClick={() => router.push('/profile')} // Defaulting to /profile for now if /downloads doesn't exist
-            className="flex items-center gap-2 bg-[#f5f0e8] text-black px-6 py-3 rounded-full font-bold hover:bg-[#f5f0e8]/90 transition-colors"
+            className="flex items-center gap-2 bg-[#2E7DF7] text-white px-6 py-3 rounded-full font-bold hover:bg-[#2E7DF7]/90 transition-colors"
           >
             Go to Downloads <ArrowRight className="w-4 h-4" />
           </button>
         </>
       ) : (
         <>
-          <p className="text-[#f5f0e8]/60 mb-8 max-w-md">
+          <p className="text-[#2E7DF7]/60 mb-8 max-w-md">
             No internet connection detected and no downloaded music found. Please reconnect to use ZHA Better.
           </p>
           <Link
             href="/"
-            className="flex items-center gap-2 border border-[#f5f0e8]/20 text-[#f5f0e8] px-6 py-3 rounded-full font-bold hover:bg-[#f5f0e8]/5 transition-colors"
+            className="flex items-center gap-2 border border-[#2E7DF7]/20 text-[#2E7DF7] px-6 py-3 rounded-full font-bold hover:bg-[#2E7DF7]/5 transition-colors"
           >
             Retry Connection
           </Link>

@@ -4,8 +4,12 @@ import { apiClient } from '../api/client';
 export interface User {
   id: string;
   email: string;
-  is_active: boolean;
-  is_superuser: boolean;
+  display_name?: string;
+  avatar_url?: string;
+  crossfade_seconds?: number;
+  autoplay_enabled?: boolean;
+  is_active?: boolean;
+  is_superuser?: boolean;
 }
 
 interface UserState {

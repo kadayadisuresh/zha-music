@@ -67,6 +67,7 @@ export const QueueItem: React.FC<QueueItemProps> = ({
             fill
             className="object-cover"
             sizes="40px"
+            unoptimized
           />
         )}
         {isActive && (
@@ -84,10 +85,7 @@ export const QueueItem: React.FC<QueueItemProps> = ({
         className="flex-grow min-w-0 cursor-pointer"
         onClick={() => onPlay(track, index)}
       >
-        <p className={cn(
-          "text-sm font-medium truncate",
-          isActive ? "text-primary" : "text-white"
-        )}>
+        <p className="text-sm font-medium truncate text-white">
           {track.title}
         </p>
         <p className="text-xs text-white/50 truncate">

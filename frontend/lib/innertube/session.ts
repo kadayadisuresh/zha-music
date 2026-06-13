@@ -1,63 +1,56 @@
-import { Innertube, UniversalCache } from 'youtubei.js';
-// @ts-ignore
-import { generate } from 'youtube-po-token-generator';
+import { Innertube, UniversalCache, Platform } from 'youtubei.js';
 
 /**
- * Global variable to hold the InnerTube instance and refresh interval
- * to ensure a singleton across HMR during development.
+ * Global variable to hold the InnerTube instance.
+ * 
+ * PO Token generation is permanently disabled because:
+ * 1. youtube-po-token-generator uses jsdom internally, consuming 4GB+ RAM and causing OOM crashes
+ * 2. The vendor/index.html file is missing from the package
+ * 3. InnerTube works for browsing, search, and streaming without PO tokens
  */
 const globalForInnertube = global as unknown as {
   innertube: Innertube | undefined;
-  refreshInterval: NodeJS.Timeout | undefined;
 };
 
-async function refreshPoToken(innertube: Innertube) {
-  try {
-    console.log('[InnerTube] Refreshing PO Token...');
-    const { visitorData, poToken } = await generate();
-    
-    // Update the session credentials
-    innertube.session.context.client.visitorData = visitorData;
-    (innertube.session as any).po_token = poToken;
-    
-    console.log('[InnerTube] PO Token refreshed successfully.');
-  } catch (error) {
-    console.error('[InnerTube] Failed to refresh PO Token:', error);
-  }
-}
+/**
+ * Set the JavaScript evaluator for youtubei.js BEFORE creating the Innertube instance.
+ * This is required for deciphering stream URLs (signature + n-parameter).
+ * Uses the Function constructor which works in Node.js server-side environments.
+ * See: https://ytjs.dev/guide/getting-started.html#providing-a-custom-javascript-interpreter
+ */
+Platform.shim.eval = async (data: { output: string }, env?: Record<string, unknown>) => {
+  const keys = Object.keys(env || {});
+  const values = Object.values(env || {});
+  const fn = new Function(...keys, data.output);
+  return fn(...values);
+};
+
+let initializationPromise: Promise<Innertube | undefined> | null = null;
 
 export async function getInnertube() {
-  if (!globalForInnertube.innertube) {
-    console.log('[InnerTube] Initializing new session with PO Token...');
+  if (globalForInnertube.innertube) return globalForInnertube.innertube;
+  
+  if (initializationPromise) {
+    return initializationPromise;
+  }
+
+  initializationPromise = (async () => {
+    console.log('[InnerTube] Initializing session...');
     
     try {
-      const { visitorData, poToken } = await generate();
-      
       globalForInnertube.innertube = await Innertube.create({
-        visitor_data: visitorData,
-        po_token: poToken,
         cache: new UniversalCache(false),
         generate_session_locally: true,
       });
 
-      // Start background refresh every 6 hours (PO tokens usually last 24h)
-      if (!globalForInnertube.refreshInterval) {
-        globalForInnertube.refreshInterval = setInterval(() => {
-          if (globalForInnertube.innertube) {
-            refreshPoToken(globalForInnertube.innertube);
-          }
-        }, 6 * 60 * 60 * 1000);
-      }
-
-      console.log('[InnerTube] Session initialized.');
+      console.log('[InnerTube] Session initialized successfully.');
     } catch (error) {
       console.error('[InnerTube] Failed to initialize InnerTube session:', error);
-      // Fallback to basic initialization if PO token generation fails
-      globalForInnertube.innertube = await Innertube.create({
-        cache: new UniversalCache(false),
-        generate_session_locally: true,
-      });
+    } finally {
+      initializationPromise = null;
     }
-  }
-  return globalForInnertube.innertube;
+    return globalForInnertube.innertube;
+  })();
+
+  return initializationPromise;
 }

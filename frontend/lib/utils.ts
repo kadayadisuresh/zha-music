@@ -1,3 +1,7 @@
+export function cn(...classes: (string | boolean | undefined | null)[]): string {
+  return classes.filter(Boolean).join(' ');
+}
+
 export function formatTime(seconds: number): string {
   if (isNaN(seconds)) return '0:00';
   const minutes = Math.floor(seconds / 60);

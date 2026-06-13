@@ -102,8 +102,98 @@ export function mapArtist(artist: any): Artist {
   };
 }
 
+/**
+ * Parse a duration text string (e.g., "4:22", "1:03:22") into seconds.
+ */
+function parseDurationText(text: string): number {
+  if (!text || typeof text !== 'string') return 0;
+  
+  // Clean the text - remove any non-numeric/colon characters
+  const cleaned = text.trim().replace(/[^\d:]/g, '');
+  if (!cleaned) return 0;
+  
+  const parts = cleaned.split(':').map(Number);
+  if (parts.some(isNaN)) return 0;
+  
+  if (parts.length === 2) return parts[0] * 60 + parts[1];        // M:SS
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]; // H:MM:SS
+  if (parts.length === 1) return parts[0]; // Just seconds
+  return 0;
+}
+
 export function mapTrack(item: any): Track {
   const title = (typeof item.title === 'string' ? item.title : item.title?.text) || item.name || 'Unknown';
+  
+  // Comprehensive duration parsing — InnerTube returns duration in many formats
+  let duration = 0;
+  
+  // 1. Direct seconds property (most common for song-type results)
+  if (item.duration?.seconds && typeof item.duration.seconds === 'number') {
+    duration = item.duration.seconds;
+  }
+  // 2. Duration is a plain number
+  else if (typeof item.duration === 'number' && item.duration > 0) {
+    duration = item.duration;
+  }
+  // 3. Duration has a text property (common for MusicResponsiveListItem)
+  else if (item.duration?.text) {
+    duration = parseDurationText(item.duration.text);
+  }
+  // 4. Duration is a plain string like "4:22"
+  else if (typeof item.duration === 'string') {
+    duration = parseDurationText(item.duration);
+  }
+  
+  // 5. Fallback: check fixed_columns for duration (YTM search results sometimes put it here)
+  if (duration === 0 && item.fixed_columns) {
+    for (const col of item.fixed_columns) {
+      const text = col?.title?.text || col?.text?.text || col?.text;
+      if (typeof text === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(text.trim())) {
+        duration = parseDurationText(text);
+        if (duration > 0) break;
+      }
+      // Also check runs inside the column
+      const runs = col?.title?.runs || col?.text?.runs;
+      if (Array.isArray(runs)) {
+        for (const run of runs) {
+          if (typeof run.text === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(run.text.trim())) {
+            duration = parseDurationText(run.text);
+            if (duration > 0) break;
+          }
+        }
+        if (duration > 0) break;
+      }
+    }
+  }
+  
+  // 6. Fallback: check flex_columns for duration text
+  if (duration === 0 && item.flex_columns) {
+    for (const col of item.flex_columns) {
+      const runs = col?.title?.runs || col?.text?.runs;
+      if (Array.isArray(runs)) {
+        for (const run of runs) {
+          if (typeof run.text === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(run.text.trim())) {
+            duration = parseDurationText(run.text);
+            if (duration > 0) break;
+          }
+        }
+        if (duration > 0) break;
+      }
+    }
+  }
+
+  // 7. Fallback: duration_text or length_text properties
+  if (duration === 0) {
+    const textFallback = item.duration_text?.text || item.duration_text 
+      || item.length_text?.text || item.length_text
+      || item.length?.text || item.length;
+    if (typeof textFallback === 'string') {
+      duration = parseDurationText(textFallback);
+    } else if (typeof textFallback === 'number') {
+      duration = textFallback;
+    }
+  }
+
   return {
     id: item.id || item.video_id,
     title,
@@ -112,7 +202,7 @@ export function mapTrack(item: any): Track {
       id: item.album.id || item.album.browse_id, 
       name: (typeof item.album.name === 'string' ? item.album.name : item.album.text) 
     } : undefined,
-    duration: item.duration?.seconds || 0,
+    duration,
     thumbnail: mapThumbnail(item.thumbnail || item.thumbnails),
   };
 }
@@ -141,15 +231,45 @@ export function mapArtistDetails(artist: any): ArtistDetails {
   const sections = (artist.sections || []).map((section: any) => ({
     title: section.title?.text || section.type || 'Untitled',
     type: section.type || 'unknown',
-    items: (section.contents || []).map((item: any) => {
+    items: (section.contents || []).flatMap((item: any) => {
+      // MusicResponsiveListItem — track/album/artist rows
       if (item.type === 'MusicResponsiveListItem') {
-        if (item.item_type === 'song' || item.item_type === 'video') return mapTrack(item);
-        if (item.item_type === 'album') return mapAlbum(item);
-        if (item.item_type === 'artist') return mapSearchArtist(item);
+        if (item.item_type === 'song' || item.item_type === 'video') return [mapTrack(item)];
+        if (item.item_type === 'album') return [mapAlbum(item)];
+        if (item.item_type === 'artist') return [mapSearchArtist(item)];
+        // Fallback: try to detect by available fields
+        if (item.id && item.title) return [mapTrack(item)];
+        return [];
       }
-      return item; // Fallback
+
+      // MusicTwoRowItem — appears in carousel sections (e.g., "Albums", "Singles")
+      if (item.type === 'MusicTwoRowItem') {
+        const title = typeof item.title === 'string'
+          ? item.title
+          : (item.title?.text || item.title?.runs?.[0]?.text || '');
+        const id = item.id || item.browse_id
+          || item.navigationEndpoint?.browseEndpoint?.browseId
+          || item.title?.endpoint?.browseEndpoint?.browseId
+          || '';
+        if (!id) return [];
+        return [{
+          id,
+          title,
+          artists: (item.artists || item.subtitle?.runs
+            ? parseSubtitleArtists(item.subtitle)
+            : []
+          ),
+          year: typeof item.year === 'string'
+            ? item.year
+            : (item.year?.text || undefined),
+          thumbnail: mapThumbnail(item.thumbnail || item.thumbnails),
+        } as Album];
+      }
+
+      // MusicNavigationButton, Moods, etc. — skip silently
+      return [];
     }),
-  }));
+  })).filter((s: any) => s.items.length > 0);
 
   return {
     id: artist.header?.id || '',
@@ -159,6 +279,21 @@ export function mapArtistDetails(artist: any): ArtistDetails {
     header_thumbnail: mapThumbnail(artist.header?.header_thumbnail),
     sections,
   };
+}
+
+/**
+ * Parse a YTMusic subtitle runs array to extract artist names.
+ * Subtitle often looks like: "Artist • 2023" or "2 songs"
+ */
+function parseSubtitleArtists(subtitle: any): Artist[] {
+  if (!subtitle) return [];
+  const runs: any[] = subtitle?.runs || (typeof subtitle === 'object' ? [] : []);
+  return runs
+    .filter((r: any) => r.endpoint?.browseEndpoint?.browseId?.startsWith('UC'))
+    .map((r: any): Artist => ({
+      id: r.endpoint.browseEndpoint.browseId,
+      name: r.text,
+    }));
 }
 
 export function mapAlbumDetails(album: any): AlbumDetails {
