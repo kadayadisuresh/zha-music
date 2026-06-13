@@ -39,7 +39,7 @@ export const Navbar = () => {
           </Button>
           {!user && (
             <Button
-              onClick={() => window.location.href = "http://localhost:8000/auth/google"}
+              onClick={() => useUserStore.getState().signInWithGoogle()}
               size="sm"
               className="bg-white text-black hover:bg-zinc-200 rounded-full font-bold px-4"
             >

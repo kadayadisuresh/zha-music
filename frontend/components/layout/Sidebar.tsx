@@ -295,7 +295,7 @@ export const Sidebar = () => {
           <div className="bg-zinc-900/50 rounded-xl p-4 text-center">
              <p className="text-xs text-zinc-400 mb-3">Sign in to sync your library</p>
              <button 
-               onClick={() => window.location.href = "http://localhost:8000/auth/google"}
+               onClick={() => useUserStore.getState().signInWithGoogle()}
                className="w-full bg-white text-black text-xs font-bold py-2 rounded-full hover:bg-zinc-200 transition-colors"
              >
                Sign In

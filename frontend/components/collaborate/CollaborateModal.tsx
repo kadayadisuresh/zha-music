@@ -117,7 +117,7 @@ export const CollaborateModal = ({ open, onClose }: CollaborateModalProps) => {
               Sign in to create a collaborative playlist and invite others to add songs.
             </p>
             <button
-              onClick={() => (window.location.href = 'http://localhost:8000/auth/google')}
+              onClick={() => useUserStore.getState().signInWithGoogle()}
               className="w-full bg-white text-black text-sm font-bold py-2.5 rounded-full hover:bg-zinc-200 transition-colors"
             >
               Sign In

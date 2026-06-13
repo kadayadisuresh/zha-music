@@ -42,20 +42,9 @@ export async function apiClient<T>(
     clearTimeout(id);
 
     if (!response.ok) {
-      if (response.status === 401) {
-        if (typeof window !== 'undefined') {
-          // Clear Zustand auth state dynamically to avoid circular dependencies
-          import('../stores/userStore').then(({ useUserStore }) => {
-            useUserStore.getState().setUser(null);
-          });
-          
-          // Silently redirect if not already on the landing page
-          if (window.location.pathname !== '/') {
-            window.location.href = '/';
-          }
-        }
-      }
-      
+      // Phase 17: Supabase owns auth. A 401 from the legacy FastAPI data layer
+      // must NOT clear the Supabase session or redirect — it just means that
+      // (soon-to-be-migrated) endpoint failed. Slice 2 moves these to supabase-js.
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.detail || errorData.message || 'API request failed');
     }

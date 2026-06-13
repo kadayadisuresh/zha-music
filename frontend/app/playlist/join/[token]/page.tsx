@@ -61,10 +61,7 @@ export default function JoinPlaylistPage({ params }: JoinPageProps) {
           <h1 className="text-xl font-bold text-white mb-2">Sign in to join</h1>
           <p className="text-zinc-400 text-sm mb-5">You need an account to collaborate on this playlist.</p>
           <button
-            onClick={() => {
-              document.cookie = `oauth_return_to=${encodeURIComponent(`/playlist/join/${token}`)}; path=/`;
-              window.location.href = `${API_BASE_URL}/auth/google`;
-            }}
+            onClick={() => useUserStore.getState().signInWithGoogle()}
             className="bg-white text-black font-bold px-6 py-3 rounded-full hover:bg-zinc-200 transition-colors"
           >
             Continue with Google

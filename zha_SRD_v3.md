@@ -1584,6 +1584,13 @@ current phase is fully working.
   16          PWA & Polish     manifest.json, service worker via next-pwa,
                                install prompt, full responsive audit
                                (375/768/1024/1440), Lighthouse PWA \>= 90
+
+  17          Serverless       Remove FastAPI entirely; Supabase Auth (Google)
+              Migration ---    + Row-Level Security for likes/playlists/history;
+              Supabase +       supabase-js data layer; Supabase Realtime replaces
+              Vercel           the WebSocket hubs for Jam/Blend/chat; youtubei.js
+                               stream resolution in Next route handlers (drop
+                               yt-dlp); deploy on Vercel free tier. See §14.
   ----------- ---------------- -------------------------------------------------
 
 **10. Critical Rules & Constraints**
@@ -1866,3 +1873,237 @@ current phase is fully working.
   Cosine Similarity     Math used in Blend to measure how similar two
                         users\' tastes are
   --------------------- -------------------------------------------------
+
+---
+
+**14. Phase 17 --- Serverless Migration (FastAPI → Supabase + Vercel)**
+
+**Status:** Planned. Added 2026-06. Supersedes the FastAPI/VPS backend
+described in §2.2, §3.5, and §7. Sections 1--13 remain accurate except where
+this section overrides them.
+
+**14.1 Goal**
+
+Remove the FastAPI backend and run ഴ-zha as a Next.js app on Vercel's free
+tier, with Supabase (free tier) providing auth, database, and realtime.
+
+- No VPS. No card required for deployment. Free forever (within free-tier
+  limits, see §14.10).
+- Same or faster playback.
+- All existing features preserved: Jam, chat, collaborative playlists, liked
+  songs, listening history, Blend, downloads, PWA.
+
+**14.2 Architecture --- Before → After**
+
+  ------------------------ ----------------------------- ------------------------------------
+  **Concern**              **Before (v3 / FastAPI)**     **After (Phase 17)**
+
+  Auth                     FastAPI Google OAuth + JWT     Supabase Auth (Google provider);
+                           cookie; custom users table     session held by supabase-js in the
+                                                          browser; auth.users is the identity
+
+  Data (likes,             FastAPI + SQLAlchemy →         Browser → supabase-js → Postgres,
+  playlists, history)      Postgres                       guarded by Row-Level Security
+
+  Realtime (Jam,           FastAPI native WebSocket hubs   Supabase Realtime: Broadcast +
+  collab playlist, chat)                                  Presence for live sync; a messages
+                                                          table + Realtime subscription for
+                                                          chat
+
+  YouTube metadata /       Next.js route handlers +       UNCHANGED (runs as Vercel
+  search / browse          youtubei.js                    serverless/edge functions)
+
+  Audio stream             FastAPI yt-dlp resolver        Next.js route handler +
+  resolution                                              youtubei.js (drop yt-dlp)
+
+  Audio playback           HTMLAudioElement; browser      UNCHANGED
+                           streams from CDN
+
+  Downloads / offline      IndexedDB                      UNCHANGED
+
+  PWA                      Serwist                        UNCHANGED
+
+  Hosting                  VPS (FastAPI) + Supabase        Vercel (Next.js) + Supabase
+                           Postgres                        (Auth + DB + Realtime)
+  ------------------------ ----------------------------- ------------------------------------
+
+**14.3 Locked Decisions**
+
+- **youtubei.js placement:** stays in Next.js Route Handlers (Vercel
+  functions), NOT true browser-direct. YouTube's InnerTube API and
+  googlevideo CDN do not send permissive CORS headers, so a browser cannot
+  call them cross-origin without a proxy; the Vercel function IS that proxy.
+  This still satisfies "no VPS / no card / free."
+
+- **Stream resolution:** consolidate on youtubei.js and remove the Python
+  yt-dlp resolver. Gated on a playback spike (§14.5, Slice 4) before yt-dlp
+  is deleted.
+
+- **Existing data:** migrate --- preserve users, playlists, likes, and
+  history by mapping the old FastAPI user identities onto Supabase auth.users
+  (§14.6). No fresh start.
+
+This overrides §10.1's "InnerTube called from BROWSER ONLY / never from a
+server": metadata and stream resolution run in Vercel functions (not a VPS),
+while audio bytes still never pass through any server --- the browser streams
+directly from the CDN, which is the spirit of that rule.
+
+**14.4 Prerequisites (one-time, done in dashboards --- not code)**
+
+1. **Supabase project** --- you already have one (it backs the current
+   DATABASE_URL). Collect from Dashboard → Project Settings → API:
+   - NEXT_PUBLIC_SUPABASE_URL (the project URL)
+   - the anon / publishable key (public --- safe in the browser)
+   - the service-role key (admin --- local/CI only, never in the bundle, never
+     committed; lives in gitignored env files)
+2. **Google provider** --- Dashboard → Authentication → Providers → Google:
+   paste the existing Google client ID + secret; in Google Cloud Console add
+   the Supabase callback `https://<ref>.supabase.co/auth/v1/callback` to the
+   OAuth client's Authorized redirect URIs.
+3. **Auth URL config** --- add Site URL + redirect allow-list:
+   `http://localhost:3000`, and later the Vercel domain.
+4. **Realtime** --- enable Realtime on the tables used for chat/collab.
+
+**14.5 Implementation Slices** (each independently shippable; app stays
+runnable in dev after every slice)
+
+- **Slice 0 --- Scaffolding (DONE in this change).** Add
+  @supabase/supabase-js; create frontend/lib/supabase/client.ts (lazy browser
+  singleton; throws only when used unconfigured); document env vars in
+  .env.example. Non-breaking --- nothing imports the client yet.
+
+- **Slice 1 --- Auth → Supabase Auth.**
+  - Replace the sign-in buttons (currently hard-coded to
+    `http://localhost:8000/auth/google` in Navbar.tsx / Sidebar.tsx) with
+    `supabase.auth.signInWithOAuth({ provider: 'google' })`.
+  - Replace userStore.checkSession / the /auth/me cookie check with
+    `supabase.auth.getSession()` + `onAuthStateChange`.
+  - Remove the FastAPI auth router and JWT/deps from the request path.
+  - **This also fixes mobile sign-in** (the old flow was hard-coded to
+    localhost; Supabase handles redirects per-origin). Closes the
+    long-standing mobile-auth gap.
+
+- **Slice 2 --- Data → supabase-js + RLS.**
+  - Author RLS policies (§14.7) on playlists, playlist_songs,
+    playlist_collaborators, liked_* , play_history, followed_artists, user
+    settings, and the invite-token / message tables. RLS becomes the ONLY
+    server-side authorization, so this is security-critical and reviewed.
+  - Rewrite the frontend data layer (lib/stores/playlistStore.ts,
+    userDataService.ts, library pages) from apiClient(FastAPI) → supabase-js
+    queries. Keep the existing optimistic-UI behavior.
+  - Remove the FastAPI playlist/library/users/blend routers.
+
+- **Slice 3 --- Realtime → Supabase Realtime.**
+  - Replace the FastAPI WebSocket hubs (lib/services/jamSocket.ts,
+    playlistSocket.ts; backend jam/playlist_ws) with Supabase Realtime
+    channels: Broadcast for play/pause/seek/queue events, Presence for who's
+    online and the host/guest roster, and a messages table + Realtime
+    subscription for chat (§14.8).
+  - Re-implement host authority, late-joiner sync, the host-drop grace
+    window, and max-10 enforcement on Realtime primitives.
+
+- **Slice 4 --- Stream resolution.**
+  - Spike: confirm youtubei.js reliably returns a playable audio URL
+    (including PoToken handling) for a representative set of tracks via
+    /api/innertube/stream|pipe. Verify start-of-playback latency is ≤ the
+    current yt-dlp path.
+  - On success, route all playback through the youtubei.js Next handler and
+    delete the FastAPI audio.py / yt-dlp dependency.
+
+- **Slice 5 --- Remove FastAPI + Deploy.**
+  - Delete backend/ once nothing references it. Drop NEXT_PUBLIC_API_URL and
+    the host:8000 resolution in lib/api/client.ts.
+  - Vercel: import the GitHub repo, set the build to the frontend/ project,
+    add env vars (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    any YouTube/PoToken config). First deploy → smoke test → set the Vercel
+    domain in Supabase Auth redirect allow-list + Google OAuth.
+
+**14.6 Data Migration Plan**
+
+- The current schema already lives in the Supabase Postgres instance; tables
+  are largely reused. The break is identity: the FastAPI users table (own
+  UUIDs keyed to google_id) → Supabase auth.users (its own UUIDs).
+- Map each existing user to an auth.users row by email/google_id; build a
+  users.id → auth.users.id mapping table.
+- Re-point foreign keys (playlists.owner_id, likes.user_id,
+  play_history.user_id, collaborators, etc.) to the auth.users id via the
+  mapping, inside one transactional migration. Keep the old users table until
+  verification passes, then drop it.
+- Run as a one-off SQL migration using the service-role key (admin), never
+  from the browser.
+
+**14.7 Row-Level Security (representative policies)**
+
+- Enable RLS on every user-data table; default-deny.
+- Ownership read/write: `auth.uid() = owner_id` (playlists, settings),
+  `auth.uid() = user_id` (likes, history, followed artists).
+- Child rows via parent: playlist_songs / messages readable & writable when
+  the user owns the parent playlist OR is a collaborator (subquery against
+  playlist_collaborators), and the playlist is collaborative for writes.
+- Invite/join: a token-scoped policy lets a non-owner insert themselves as a
+  collaborator when presenting a valid, unexpired invite token.
+- Public/none: search/stream stay in Vercel functions, never touch these
+  tables, so no RLS needed there.
+
+**14.8 Realtime Design (Jam / collab / chat)**
+
+- One Realtime channel per session (`jam:{sessionId}` /
+  `playlist:{playlistId}`).
+- **Broadcast** carries ephemeral control events: play, pause, seek, track
+  change, queue add/reorder. Host is authoritative; guests apply host events
+  and send requests the host echoes.
+- **Presence** tracks the live roster (host + guests), drives the "N
+  listening" UI, enforces max-10, and detects host drop → start the existing
+  grace window before ending for everyone.
+- **Chat** persists to a messages table (so history survives reload) and
+  streams new rows via a Realtime postgres-changes subscription; RLS limits
+  it to session participants.
+- Late-joiner sync: on join, request current state from the host over
+  Broadcast (or read the last persisted playback row).
+
+**14.9 Environment Variables (Phase 17)**
+
+  ------------------------------- ------------------------------------------------
+  **Variable**                    **Purpose**
+
+  NEXT_PUBLIC_SUPABASE_URL        Supabase project URL (public)
+
+  NEXT_PUBLIC_SUPABASE_ANON_KEY   Anon/publishable key (public; RLS enforces
+                                  access)
+
+  SUPABASE_SERVICE_ROLE_KEY       Admin key for migrations/admin scripts ---
+                                  local/CI only, never in the client bundle,
+                                  never committed
+
+  (YouTube/PoToken config)        As needed by youtubei.js stream resolution in
+                                  the Vercel function
+  ------------------------------- ------------------------------------------------
+
+NEXT_PUBLIC_API_URL and the backend's own .env are removed at Slice 5.
+
+**14.10 Free-Tier Caveats & Risks (documented, not hand-waved)**
+
+- **Supabase free projects pause after ~7 days of inactivity** --- must be
+  reopened (a periodic keep-alive ping or just regular use avoids it).
+- **Vercel Hobby** is non-commercial and has function execution / bandwidth
+  limits --- fine for a private app.
+- **Realtime free tier:** ~200 concurrent connections, ~2M messages/month ---
+  ample for personal Jam use.
+- **youtubei.js fragility:** YouTube changes break it periodically; in the
+  serverless model a fix ships via redeploy (and the PWA update cycle) rather
+  than a server hotfix.
+- **"Same or faster" is a target, not a guarantee:** youtubei.js stays in
+  Vercel functions (no extra browser bundle weight), and spreading metadata
+  requests across users' IPs avoids single-server-IP rate-limiting --- a
+  genuine win --- but start-up latency should be measured in Slice 4.
+
+**14.11 Done Criteria**
+
+- Sign in with Google works on desktop AND mobile via Supabase Auth.
+- Likes, playlists (incl. collaborative), and history read/write through
+  supabase-js with RLS; no FastAPI in any request path.
+- Jam + collaborative playlist + chat work over Supabase Realtime with host
+  authority and presence.
+- Playback works with youtubei.js-only stream resolution at ≤ current latency.
+- backend/ deleted; app deployed on Vercel free tier from GitHub; no card
+  required.
