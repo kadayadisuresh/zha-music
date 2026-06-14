@@ -35,17 +35,37 @@ Deploy target: **Vercel** (frontend) + **Supabase** (data/auth/realtime).
    | --- | --- |
    | `NEXT_PUBLIC_SUPABASE_URL` | `https://YOUR-PROJECT.supabase.co` |
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the project's anon (public) key |
+   | `YOUTUBE_COOKIE` | a logged-in youtube.com `cookie:` header — **required for audio playback** on Vercel (see below) |
 
-   These two are the **only** runtime variables. The service-role key is **not**
-   used at runtime — do **not** add it to Vercel.
+   The two `NEXT_PUBLIC_*` vars are public (RLS-protected). `YOUTUBE_COOKIE` is a
+   server-only secret. The Supabase service-role key is **not** used at runtime —
+   do **not** add it to Vercel.
 5. Deploy.
+
+## Audio playback requires `YOUTUBE_COOKIE` on Vercel
+
+YouTube blocks **streaming** from datacenter IPs (Vercel, AWS, GCP…) with "Sign in
+to confirm you're not a bot" — even with a valid PO token. Browse/search/home
+still work, but `getInfo` returns no stream formats, so playback fails. The fix is
+to run the streaming session **authenticated** with a YouTube account cookie:
+
+1. Sign in to <https://youtube.com> in a browser (a throwaway account is wise —
+   this is against YouTube ToS and risks the account).
+2. DevTools → Network → click any `youtube.com` request → copy the full **`cookie:`**
+   request header value.
+3. Add it as the Vercel env var `YOUTUBE_COOKIE` (Production + Preview), then
+   redeploy.
+
+The cookie **expires periodically** and must be refreshed when playback starts
+failing again. Local dev doesn't need it (a residential IP isn't blocked).
 
 ## Notes
 
-- **PO token / streaming:** `app/api/innertube/*` mint a WebPO token (bgutils-js +
-  jsdom) on the first request of each cold function instance (~3 s), then cache it
-  for 3 h. `jsdom`/`bgutils-js` are in `serverExternalPackages` so they aren't
-  bundled. The audio pipe (`/api/innertube/pipe`) has `maxDuration = 60`.
+- **PO token / streaming:** the audio pipe mints a WebPO token (bgutils-js + jsdom)
+  on the first request of each cold instance (~3 s), cached 3 h. jsdom is pinned to
+  v25 (CJS deps) so it loads on serverless; `jsdom`/`bgutils-js` are in
+  `serverExternalPackages`. `engines.node` is `22.x`. The audio pipe
+  (`/api/innertube/pipe`) has `maxDuration = 60`.
 - **No FastAPI:** nothing calls `localhost:8000` anymore. The Jam and Blend
   features (which were WebSocket/recompute features on FastAPI) were removed.
 - **Lyrics** come from `lrclib.net` directly (no key needed).

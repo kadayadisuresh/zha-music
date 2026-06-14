@@ -163,23 +163,36 @@ export async function getStreamingInnertube() {
   if (tokenPromise) return tokenPromise;
 
   tokenPromise = (async () => {
+    // A logged-in YouTube cookie satisfies the "Sign in to confirm you're not a
+    // bot" gate that YouTube applies to datacenter IPs (Vercel) — without it,
+    // getInfo returns no streaming data from a serverless function.
+    const cookie = process.env.YOUTUBE_COOKIE?.trim() || undefined;
     try {
-      const seed = await Innertube.create({ retrieve_player: false });
+      // Base session (authenticated if a cookie is set) → its visitor_data.
+      const seed = await Innertube.create({ cookie, retrieve_player: false });
       const visitorData: string | undefined = seed.session.context.client.visitorData;
+
+      // Mint a PO token bound to that visitor_data for the stream URLs (best-effort).
+      let poToken: string | undefined;
       if (visitorData) {
-        const poToken = await generateWebPoToken(visitorData);
-        globalForInnertube.innertube = await Innertube.create({
-          cache: new UniversalCache(false),
-          generate_session_locally: true,
-          po_token: poToken,
-          visitor_data: visitorData,
-        });
-        globalForInnertube.innertubeHasToken = true;
-        globalForInnertube.innertubeExpiry = Date.now() + SESSION_TTL_MS;
-        console.log('[InnerTube] WebPO token minted (streaming session ready).');
+        try {
+          poToken = await generateWebPoToken(visitorData);
+        } catch (err) {
+          console.error('[InnerTube] PO token mint failed:', err);
+        }
       }
+
+      globalForInnertube.innertube = await Innertube.create({
+        cache: new UniversalCache(false),
+        generate_session_locally: !cookie,
+        ...(cookie ? { cookie } : {}),
+        ...(poToken && visitorData ? { po_token: poToken, visitor_data: visitorData } : {}),
+      });
+      globalForInnertube.innertubeHasToken = true;
+      globalForInnertube.innertubeExpiry = Date.now() + SESSION_TTL_MS;
+      console.log(`[InnerTube] Streaming session ready (cookie=${!!cookie}, poToken=${!!poToken}).`);
     } catch (err) {
-      console.error('[InnerTube] PO token mint failed — using tokenless session:', err);
+      console.error('[InnerTube] Streaming session setup failed — using tokenless:', err);
     } finally {
       tokenPromise = null;
     }
