@@ -15,31 +15,17 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
+    // Dynamic API responses and audio CDN traffic must always hit the network and
+    // never be cached by the SW. Caching /api/* (NetworkFirst with a malformed
+    // `expiration` config) was making the strategy reject → "Failed to fetch" on
+    // /api/search etc. once the SW took control.
     {
       matcher: ({ url }) =>
-        url.pathname.startsWith("/api/search") ||
-        url.pathname.startsWith("/api/recommendations") ||
-        url.pathname.startsWith("/api/charts"),
-      handler: "NetworkFirst",
-      options: {
-        cacheName: "api-cache",
-        expiration: {
-          maxAgeSeconds: 300, // 5 minutes
-        },
-      },
+        url.pathname.startsWith("/api/") ||
+        url.hostname.includes("googlevideo.com"),
+      handler: "NetworkOnly",
     },
-    {
-      matcher: ({ url }) =>
-        url.pathname.startsWith("/api/artist") ||
-        url.pathname.startsWith("/api/album"),
-      handler: "StaleWhileRevalidate",
-      options: {
-        cacheName: "content-cache",
-        expiration: {
-          maxAgeSeconds: 3600, // 1 hour
-        },
-      },
-    },
+    // Images are safe to cache.
     {
       matcher: ({ url }) =>
         url.origin === "https://lh3.googleusercontent.com" ||
@@ -48,18 +34,10 @@ const serwist = new Serwist({
       options: {
         cacheName: "image-cache",
         expiration: {
+          maxEntries: 200,
           maxAgeSeconds: 24 * 60 * 60, // 24 hours
         },
       },
-    },
-    {
-      matcher: ({ url }) =>
-        url.hostname.includes("googlevideo.com") ||
-        url.pathname.startsWith("/api/proxy/stream") ||
-        url.pathname.startsWith("/api/proxy/audio") ||
-        url.pathname.startsWith("/api/auth/me") ||
-        url.pathname.startsWith("/api/user"),
-      handler: "NetworkOnly",
     },
     ...defaultCache,
   ],
