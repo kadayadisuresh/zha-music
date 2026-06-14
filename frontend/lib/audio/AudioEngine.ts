@@ -176,7 +176,7 @@ class AudioEngine {
       if (this.activeIdx !== idx) return;
       
       if (!this.isProxyFallback && this.currentVideoId) {
-        console.log(`[AudioEngine] Attempting proxy fallback for video: ${this.currentVideoId}`);
+        console.log(`[AudioEngine] Attempting fresh-resolve retry for video: ${this.currentVideoId}`);
         this.playWithProxy(this.currentVideoId);
       } else {
         usePlaybackStore.getState().setIsLoading(false);
@@ -392,19 +392,20 @@ class AudioEngine {
     }
   }
 
+  // On a playback error, retry through the same youtubei.js pipe but force a
+  // fresh resolution (`refresh=1`) in case the cached CDN URL expired. Slice 4
+  // replaced the old FastAPI/yt-dlp proxy fallback with this self-contained path.
   private playWithProxy(videoId: string) {
     this.isProxyFallback = true;
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    console.log(`[AudioEngine] playWithProxy() called for videoId: ${videoId}. Proxy baseUrl: ${baseUrl}`);
-    
+
     const { volume, isMuted } = usePlaybackStore.getState();
     const vol = typeof volume === 'number' && !isNaN(volume) ? volume : 1.0;
     const muted = !!isMuted;
-    const proxyUrl = `${baseUrl}/audio/proxy/${videoId}`;
-    
-    console.log(`[AudioEngine] Setting active player src to proxy URL. activePlayerIdx: ${this.activeIdx}, src: ${proxyUrl}, volume: ${vol}, isMuted: ${muted}`);
+    const retryUrl = `/api/innertube/pipe?video_id=${videoId}&refresh=1`;
+
+    console.log(`[AudioEngine] Fresh-resolve retry. activePlayerIdx: ${this.activeIdx}, src: ${retryUrl}, volume: ${vol}, isMuted: ${muted}`);
     this.activePlayer.volume = muted ? 0 : vol;
-    this.activePlayer.src = proxyUrl;
+    this.activePlayer.src = retryUrl;
     this.activePlayer.load();
     this.safePlay(this.activePlayer);
   }

@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   turbopack: {},
-  serverExternalPackages: ['youtube-po-token-generator', 'jsdom'],
+  serverExternalPackages: ['bgutils-js', 'jsdom'],
   images: {
     remotePatterns: [
       {

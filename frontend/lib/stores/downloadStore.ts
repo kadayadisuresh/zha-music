@@ -109,8 +109,8 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
       },
     }));
 
-    // Use our server-side pipe endpoint which uses yt-dlp to resolve
-    // and streams the audio without CORS or 403 errors.
+    // Use our server-side pipe endpoint (youtubei.js) which resolves and
+    // streams the full audio without CORS or 403 errors.
     const downloadUrl = `/api/innertube/pipe?video_id=${track.id}`;
     const contentLength = 0; // The worker will read it from the Content-Length header of the response
 

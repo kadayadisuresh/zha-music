@@ -7,7 +7,6 @@ alembic
 pydantic-settings
 pyjwt
 httpx
-yt-dlp
 ytmusicapi
 apscheduler
 
