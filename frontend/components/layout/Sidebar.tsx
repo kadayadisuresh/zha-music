@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { useUserStore } from '@/lib/stores/userStore';
 import { usePlaylistStore } from '@/lib/stores/playlistStore';
 import { useJamStore } from '@/lib/stores/jamStore';
-import { apiClient } from '@/lib/api/client';
+import * as sb from '@/lib/supabase/data';
 import { CollaborateModal } from '@/components/collaborate/CollaborateModal';
 
 const navItems = [
@@ -46,7 +46,7 @@ export const Sidebar = () => {
   const fetchLibraryData = async () => {
     if (user) {
       try {
-        const items = await apiClient<LibraryItem[]>('/library/items');
+        const items = await sb.getLibraryItems();
         setLibraryItems(items);
       } catch (err) {
         console.warn('Failed to fetch library items:', err);

@@ -9,7 +9,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Share, Heart } from 'lucide-react';
 import { useUserStore } from '@/lib/stores/userStore';
-import { apiClient } from '@/lib/api/client';
+import * as sb from '@/lib/supabase/data';
 import { cn } from '@/lib/utils';
 
 interface AlbumPageProps {
@@ -57,8 +57,7 @@ export default function AlbumPage({ params }: AlbumPageProps) {
       if (!album) return;
       if (user) {
         try {
-          const res = await apiClient<{ liked: boolean }>(`/library/albums/${id}/status`);
-          setIsLiked(res.liked);
+          setIsLiked(await sb.isAlbumLiked(id));
         } catch (err) {
           console.error('Failed to check album liked status:', err);
         }
@@ -80,19 +79,14 @@ export default function AlbumPage({ params }: AlbumPageProps) {
     if (user) {
       try {
         if (nextLiked) {
-          await apiClient('/library/albums', {
-            method: 'POST',
-            body: JSON.stringify({
-              album_id: id,
-              title: album.title,
-              artist_name: album.artists.map(a => a.name).join(', '),
-              thumbnail_url: album.thumbnail
-            })
+          await sb.likeAlbum({
+            album_id: id,
+            title: album.title,
+            artist_name: album.artists.map(a => a.name).join(', '),
+            thumbnail_url: album.thumbnail,
           });
         } else {
-          await apiClient(`/library/albums/${id}`, {
-            method: 'DELETE'
-          });
+          await sb.unlikeAlbum(id);
         }
         window.dispatchEvent(new CustomEvent('library-update'));
       } catch (err) {

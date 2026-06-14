@@ -10,7 +10,7 @@ import Image from 'next/image';
 import { Share } from 'lucide-react';
 import { usePlaybackStore } from '@/lib/stores/playbackStore';
 import { useUserStore } from '@/lib/stores/userStore';
-import { apiClient } from '@/lib/api/client';
+import * as sb from '@/lib/supabase/data';
 import { cn } from '@/lib/utils';
 
 import { ArtistSkeleton } from '@/components/artist/ArtistSkeleton';
@@ -61,8 +61,7 @@ export default function ArtistPage({ params }: ArtistPageProps) {
       if (!artist) return;
       if (user) {
         try {
-          const res = await apiClient<{ followed: boolean }>(`/library/artists/${id}/status`);
-          setIsFollowed(res.followed);
+          setIsFollowed(await sb.isArtistFollowed(id));
         } catch (err) {
           console.error('Failed to check artist follow status:', err);
         }
@@ -84,18 +83,13 @@ export default function ArtistPage({ params }: ArtistPageProps) {
     if (user) {
       try {
         if (nextFollowed) {
-          await apiClient('/library/artists', {
-            method: 'POST',
-            body: JSON.stringify({
-              channel_id: id,
-              name: artist.name,
-              thumbnail_url: artist.thumbnail || artist.header_thumbnail
-            })
+          await sb.followArtist({
+            channel_id: id,
+            name: artist.name,
+            thumbnail_url: artist.thumbnail || artist.header_thumbnail,
           });
         } else {
-          await apiClient(`/library/artists/${id}`, {
-            method: 'DELETE'
-          });
+          await sb.unfollowArtist(id);
         }
         window.dispatchEvent(new CustomEvent('library-update'));
       } catch (err) {

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Library, Download, ChevronRight, Heart, Music2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUserStore } from '@/lib/stores/userStore';
-import { apiClient } from '@/lib/api/client';
+import * as sb from '@/lib/supabase/data';
 
 interface LibraryItem {
   id: string;
@@ -35,7 +35,7 @@ export default function LibraryPage() {
   const fetchLibraryData = async () => {
     if (user) {
       try {
-        const data = await apiClient<LibraryItem[]>('/library/items');
+        const data = await sb.getLibraryItems();
         setItems(data);
       } catch (err) {
         console.warn('Failed to fetch library items:', err);

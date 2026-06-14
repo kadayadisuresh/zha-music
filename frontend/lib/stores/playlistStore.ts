@@ -1,10 +1,9 @@
 import { create } from 'zustand';
-import { apiClient } from '../api/client';
 import { useUserStore } from './userStore';
-import { Track } from '../api/mappers';
+import * as sb from '../supabase/data';
 
 export interface Playlist {
-  id: number | string; // backend uses numbers, local uses strings/timestamps
+  id: number | string; // server playlists use numeric ids; local ones use strings
   title: string;
   description?: string;
 }
@@ -34,6 +33,9 @@ interface PlaylistState {
   fetchPlaylistDetails: (playlistId: number | string) => Promise<PlaylistDetails>;
 }
 
+// Numeric id ⇒ a server (Supabase) playlist; anything else ⇒ a local (localStorage) one.
+const isServerId = (id: number | string) => /^\d+$/.test(String(id));
+
 export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   playlists: [],
   isLoading: false,
@@ -42,61 +44,49 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   fetchPlaylists: async () => {
     set({ isLoading: true, error: null });
     const user = useUserStore.getState().user;
-
     if (user) {
       try {
-        const playlists = await apiClient<Playlist[]>('/playlist/');
-        set({ playlists, isLoading: false });
-      } catch (err: any) {
-        set({ error: err.message || 'Failed to fetch playlists', isLoading: false });
+        const rows = await sb.listPlaylists(); // RLS returns only the user's playlists
+        set({
+          playlists: rows.map((p) => ({ id: p.id, title: p.title, description: p.description ?? undefined })),
+          isLoading: false,
+        });
+      } catch (err) {
+        set({ error: err instanceof Error ? err.message : 'Failed to fetch playlists', isLoading: false });
       }
+    } else if (typeof window !== 'undefined') {
+      const local = localStorage.getItem('zha-local-playlists');
+      set({ playlists: local ? JSON.parse(local) : [], isLoading: false });
     } else {
-      // Load local playlists from localStorage
-      if (typeof window !== 'undefined') {
-        const local = localStorage.getItem('zha-local-playlists');
-        const list = local ? JSON.parse(local) : [];
-        set({ playlists: list, isLoading: false });
-      } else {
-        set({ playlists: [], isLoading: false });
-      }
+      set({ playlists: [], isLoading: false });
     }
   },
 
-  createPlaylist: async (title: string, description: string = '') => {
+  createPlaylist: async (title, description = '') => {
     const user = useUserStore.getState().user;
     if (user) {
-      const url = `/playlist/?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`;
-      const playlist = await apiClient<Playlist>(url, { method: 'POST' });
+      const p = await sb.createPlaylist(title, description);
       await get().fetchPlaylists();
-      return playlist;
-    } else {
-      // Local storage
-      const newPlaylist: Playlist = {
-        id: `local-${Date.now()}`,
-        title,
-        description,
-      };
-      
-      const localPlaylists = typeof window !== 'undefined' ? localStorage.getItem('zha-local-playlists') : null;
-      const list = localPlaylists ? JSON.parse(localPlaylists) : [];
-      list.push(newPlaylist);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('zha-local-playlists', JSON.stringify(list));
-        // Initialize an empty songs array for this playlist
-        localStorage.setItem(`zha-local-playlist-${newPlaylist.id}`, JSON.stringify([]));
-      }
-      set({ playlists: list });
-      return newPlaylist;
+      return { id: p.id, title: p.title, description: p.description ?? undefined };
     }
+    // Local storage (anonymous)
+    const newPlaylist: Playlist = { id: `local-${Date.now()}`, title, description };
+    const localPlaylists = typeof window !== 'undefined' ? localStorage.getItem('zha-local-playlists') : null;
+    const list = localPlaylists ? JSON.parse(localPlaylists) : [];
+    list.push(newPlaylist);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('zha-local-playlists', JSON.stringify(list));
+      localStorage.setItem(`zha-local-playlist-${newPlaylist.id}`, JSON.stringify([]));
+    }
+    set({ playlists: list });
+    return newPlaylist;
   },
 
-  deletePlaylist: async (playlistId: number | string) => {
-    const user = useUserStore.getState().user;
-    if (/^\d+$/.test(String(playlistId))) {
-      await apiClient(`/playlist/${playlistId}`, { method: 'DELETE' });
+  deletePlaylist: async (playlistId) => {
+    if (isServerId(playlistId)) {
+      await sb.deletePlaylist(Number(playlistId));
       await get().fetchPlaylists();
     } else {
-      // Local storage
       const localPlaylists = typeof window !== 'undefined' ? localStorage.getItem('zha-local-playlists') : null;
       let list = localPlaylists ? JSON.parse(localPlaylists) : [];
       list = list.filter((p: Playlist) => p.id !== playlistId);
@@ -108,66 +98,53 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
     }
   },
 
-  addSongToPlaylist: async (playlistId: number | string, songId: string) => {
-    const user = useUserStore.getState().user;
-    if (/^\d+$/.test(String(playlistId))) {
-      const url = `/playlist/${playlistId}/songs?song_id=${encodeURIComponent(songId)}`;
-      await apiClient(url, { method: 'POST' });
+  addSongToPlaylist: async (playlistId, songId) => {
+    if (isServerId(playlistId)) {
+      await sb.addSongToPlaylist(Number(playlistId), songId);
     } else {
-      // Local storage
       const key = `zha-local-playlist-${playlistId}`;
       const localSongs = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
       const songs: PlaylistSongItem[] = localSongs ? JSON.parse(localSongs) : [];
-      
-      // Prevent duplicates in playlist
-      if (!songs.some(s => s.song_id === songId)) {
+      if (!songs.some((s) => s.song_id === songId)) {
         songs.push({ song_id: songId, position: songs.length });
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(key, JSON.stringify(songs));
-        }
+        if (typeof window !== 'undefined') localStorage.setItem(key, JSON.stringify(songs));
       }
     }
   },
 
-  removeSongFromPlaylist: async (playlistId: number | string, songId: string) => {
-    const user = useUserStore.getState().user;
-    if (/^\d+$/.test(String(playlistId))) {
-      await apiClient(`/playlist/${playlistId}/songs/${songId}`, { method: 'DELETE' });
+  removeSongFromPlaylist: async (playlistId, songId) => {
+    if (isServerId(playlistId)) {
+      await sb.removeSongFromPlaylist(Number(playlistId), songId);
     } else {
-      // Local storage
       const key = `zha-local-playlist-${playlistId}`;
       const localSongs = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
       let songs: PlaylistSongItem[] = localSongs ? JSON.parse(localSongs) : [];
-      songs = songs.filter(s => s.song_id !== songId);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(key, JSON.stringify(songs));
-      }
+      songs = songs.filter((s) => s.song_id !== songId);
+      if (typeof window !== 'undefined') localStorage.setItem(key, JSON.stringify(songs));
     }
   },
 
-  fetchPlaylistDetails: async (playlistId: number | string): Promise<PlaylistDetails> => {
-    const user = useUserStore.getState().user;
-    if (/^\d+$/.test(String(playlistId))) {
-      return await apiClient<PlaylistDetails>(`/playlist/${playlistId}`);
-    } else {
-      // Local storage
-      const localPlaylists = typeof window !== 'undefined' ? localStorage.getItem('zha-local-playlists') : null;
-      const list = localPlaylists ? JSON.parse(localPlaylists) : [];
-      const playlist = list.find((p: Playlist) => p.id === playlistId);
-      
-      if (!playlist) {
-        throw new Error('Playlist not found');
-      }
-
-      const key = `zha-local-playlist-${playlistId}`;
-      const localSongs = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
-      const songs: PlaylistSongItem[] = localSongs ? JSON.parse(localSongs) : [];
-
+  fetchPlaylistDetails: async (playlistId): Promise<PlaylistDetails> => {
+    if (isServerId(playlistId)) {
+      const d = await sb.getPlaylistDetails(Number(playlistId));
       return {
-        ...playlist,
-        is_collaborative: false,
-        songs,
+        id: d.id,
+        title: d.title,
+        description: d.description ?? undefined,
+        is_collaborative: d.is_collaborative,
+        owner_id: d.owner_id,
+        cover_url: d.cover_url,
+        songs: d.songs,
       };
     }
+    // Local storage (anonymous)
+    const localPlaylists = typeof window !== 'undefined' ? localStorage.getItem('zha-local-playlists') : null;
+    const list = localPlaylists ? JSON.parse(localPlaylists) : [];
+    const playlist = list.find((p: Playlist) => p.id === playlistId);
+    if (!playlist) throw new Error('Playlist not found');
+    const key = `zha-local-playlist-${playlistId}`;
+    const localSongs = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+    const songs: PlaylistSongItem[] = localSongs ? JSON.parse(localSongs) : [];
+    return { ...playlist, is_collaborative: false, songs };
   },
 }));

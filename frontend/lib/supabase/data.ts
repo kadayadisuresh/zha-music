@@ -115,8 +115,14 @@ export async function recordPlay(t: {
   thumbnail_url: string | null;
 }): Promise<void> {
   const user_id = await currentUserId();
-  // fire-and-forget; non-critical
-  await getSupabase().from('play_history').insert({ user_id, ...t });
+  // play_history.id (UUID) and play_duration_seconds (NOT NULL) have no DB
+  // default — the old SQLAlchemy layer supplied them, so we must here too.
+  await getSupabase().from('play_history').insert({
+    id: crypto.randomUUID(),
+    user_id,
+    play_duration_seconds: 0,
+    ...t,
+  });
 }
 
 export async function getRecentlyPlayed(limit = 20): Promise<RecentTrack[]> {
@@ -127,4 +133,84 @@ export async function getRecentlyPlayed(limit = 20): Promise<RecentTrack[]> {
     .limit(limit);
   if (error) throw error;
   return (data ?? []) as RecentTrack[];
+}
+
+// ── Library (combined playlists + liked albums + followed artists) ────────────
+export interface LibraryItem {
+  id: string;
+  type: 'playlist' | 'album' | 'artist';
+  title: string;
+  subtitle: string;
+  thumbnail_url: string | null;
+}
+
+export async function getLibraryItems(): Promise<LibraryItem[]> {
+  const supabase = getSupabase();
+  // RLS scopes each table to the signed-in user automatically.
+  const [pl, al, ar] = await Promise.all([
+    supabase.from('playlists').select('id,title').order('created_at', { ascending: false }),
+    supabase.from('liked_albums').select('album_id,title,artist_name,thumbnail_url').order('liked_at', { ascending: false }),
+    supabase.from('followed_artists').select('channel_id,name,thumbnail_url').order('followed_at', { ascending: false }),
+  ]);
+  if (pl.error) throw pl.error;
+  if (al.error) throw al.error;
+  if (ar.error) throw ar.error;
+  const items: LibraryItem[] = [];
+  for (const p of pl.data ?? []) {
+    items.push({ id: String(p.id), type: 'playlist', title: p.title, subtitle: 'Playlist • You', thumbnail_url: null });
+  }
+  for (const a of al.data ?? []) {
+    items.push({ id: a.album_id, type: 'album', title: a.title, subtitle: `Album • ${a.artist_name}`, thumbnail_url: a.thumbnail_url });
+  }
+  for (const r of ar.data ?? []) {
+    items.push({ id: r.channel_id, type: 'artist', title: r.name, subtitle: 'Artist', thumbnail_url: r.thumbnail_url });
+  }
+  return items;
+}
+
+// ── Liked albums ─────────────────────────────────────────────────────────────
+export async function isAlbumLiked(albumId: string): Promise<boolean> {
+  const { data } = await getSupabase().from('liked_albums').select('album_id').eq('album_id', albumId).maybeSingle();
+  return !!data;
+}
+
+export async function likeAlbum(a: {
+  album_id: string;
+  title: string;
+  artist_name: string;
+  thumbnail_url: string | null;
+}): Promise<void> {
+  const user_id = await currentUserId();
+  const { error } = await getSupabase()
+    .from('liked_albums')
+    .upsert({ user_id, ...a }, { onConflict: 'user_id,album_id' });
+  if (error) throw error;
+}
+
+export async function unlikeAlbum(albumId: string): Promise<void> {
+  const { error } = await getSupabase().from('liked_albums').delete().eq('album_id', albumId);
+  if (error) throw error;
+}
+
+// ── Followed artists ─────────────────────────────────────────────────────────
+export async function isArtistFollowed(channelId: string): Promise<boolean> {
+  const { data } = await getSupabase().from('followed_artists').select('channel_id').eq('channel_id', channelId).maybeSingle();
+  return !!data;
+}
+
+export async function followArtist(a: {
+  channel_id: string;
+  name: string;
+  thumbnail_url: string | null;
+}): Promise<void> {
+  const user_id = await currentUserId();
+  const { error } = await getSupabase()
+    .from('followed_artists')
+    .upsert({ user_id, ...a }, { onConflict: 'user_id,channel_id' });
+  if (error) throw error;
+}
+
+export async function unfollowArtist(channelId: string): Promise<void> {
+  const { error } = await getSupabase().from('followed_artists').delete().eq('channel_id', channelId);
+  if (error) throw error;
 }
