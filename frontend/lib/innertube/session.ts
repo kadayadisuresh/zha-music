@@ -1,24 +1,27 @@
 import { Innertube, UniversalCache, Platform } from 'youtubei.js';
-import { BG, buildURL, GOOG_API_KEY, USER_AGENT } from 'bgutils-js';
-import { JSDOM } from 'jsdom';
 
 /**
- * InnerTube session with a WebPO (Proof of Origin) token.
+ * InnerTube sessions.
  *
- * Phase 17 · Slice 4: without a PO token, googlevideo only serves the first
- * ~1 MB from byte 0 and 403s every later range, so full playback + seeking are
- * impossible. We mint a session-bound WebPO token (bgutils-js + a throwaway
- * jsdom for the BotGuard VM) and hand it to youtubei.js, which appends `&pot=`
- * to the stream URLs — googlevideo then serves arbitrary ranges. The token is
- * bound to the session's visitor_data and minted once per process.
+ * Two flavours:
+ *  - getInnertube()          — plain, tokenless session. Fast, no jsdom. Used by
+ *                              browse / search / radio / track (no PO token needed).
+ *  - getStreamingInnertube() — session bound to a WebPO token. Only the audio
+ *                              pipe needs it: without a PO token googlevideo only
+ *                              serves the first ~1 MB and 403s later ranges.
+ *
+ * The PO token is minted with bgutils-js + a throwaway jsdom for the BotGuard VM.
+ * jsdom is heavy / fragile on serverless, so it is imported *dynamically* and the
+ * whole mint is best-effort — if it fails we degrade to the tokenless session
+ * rather than taking down every route at module load.
  */
 const globalForInnertube = global as unknown as {
   innertube: Innertube | undefined;
+  innertubeHasToken: boolean | undefined;
   innertubeExpiry: number | undefined;
 };
 
-// Re-mint the PO token periodically (its integrity token expires in hours). On
-// a long-running server a stale token starts 403'ing, so rebuild proactively.
+// Re-mint the PO token periodically (its integrity token expires in hours).
 const SESSION_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours
 
 // Required for deciphering stream URLs (signature + n-parameter) in Node.
@@ -33,11 +36,15 @@ Platform.shim.eval = async (data: { output: string }, env?: Record<string, unkno
 const REQUEST_KEY = 'O43z0dpjhgX20SCx4KAo';
 
 /**
- * Mint a session-bound WebPO token for the given visitor_data. Sets up a
- * throwaway jsdom for the BotGuard VM and tears the globals down afterwards so
- * the rest of the Node server isn't fooled into thinking it's a browser.
+ * Mint a session-bound WebPO token for the given visitor_data. Loads jsdom +
+ * bgutils-js lazily (so they never run for browse/search) and tears the jsdom
+ * globals down afterwards so the rest of the Node server isn't fooled into
+ * thinking it's a browser.
  */
 async function generateWebPoToken(visitorData: string): Promise<string> {
+  const { JSDOM } = await import('jsdom');
+  const { BG, buildURL, GOOG_API_KEY, USER_AGENT } = await import('bgutils-js');
+
   const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
     url: 'https://www.youtube.com/',
     referrer: 'https://www.youtube.com/',
@@ -109,55 +116,84 @@ async function generateWebPoToken(visitorData: string): Promise<string> {
   }
 }
 
-let initializationPromise: Promise<Innertube | undefined> | null = null;
+let initPromise: Promise<Innertube | undefined> | null = null;
+let tokenPromise: Promise<Innertube | undefined> | null = null;
 
+/** Plain, tokenless InnerTube session (browse / search / radio). No jsdom. */
 export async function getInnertube() {
   if (globalForInnertube.innertube && Date.now() < (globalForInnertube.innertubeExpiry ?? 0)) {
     return globalForInnertube.innertube;
   }
-  if (initializationPromise) return initializationPromise;
+  if (initPromise) return initPromise;
 
-  initializationPromise = (async () => {
+  initPromise = (async () => {
     console.log('[InnerTube] Initializing session...');
     try {
-      // 1. Throwaway session to obtain visitor_data for the token binding.
-      const seed = await Innertube.create({ retrieve_player: false });
-      const visitorData: string | undefined = seed.session.context.client.visitorData;
-
-      // 2. Mint the WebPO token (best-effort — fall back to a tokenless session).
-      let poToken: string | undefined;
-      if (visitorData) {
-        try {
-          poToken = await generateWebPoToken(visitorData);
-          console.log('[InnerTube] WebPO token minted.');
-        } catch (err) {
-          console.error('[InnerTube] PO token generation failed (playback may be limited):', err);
-        }
-      }
-
-      // 3. Real session, with the token bound to the same visitor_data.
       globalForInnertube.innertube = await Innertube.create({
         cache: new UniversalCache(false),
         generate_session_locally: true,
-        ...(poToken && visitorData ? { po_token: poToken, visitor_data: visitorData } : {}),
       });
-
+      globalForInnertube.innertubeHasToken = false;
       globalForInnertube.innertubeExpiry = Date.now() + SESSION_TTL_MS;
-      console.log('[InnerTube] Session initialized successfully.');
+      console.log('[InnerTube] Session initialized.');
     } catch (error) {
-      console.error('[InnerTube] Failed to initialize InnerTube session:', error);
+      console.error('[InnerTube] Failed to initialize session:', error);
     } finally {
-      initializationPromise = null;
+      initPromise = null;
     }
     return globalForInnertube.innertube;
   })();
 
-  return initializationPromise;
+  return initPromise;
+}
+
+/**
+ * InnerTube session bound to a WebPO token (audio streaming). Mints lazily and
+ * rebuilds the session; if minting fails (e.g. jsdom unavailable), falls back to
+ * the plain tokenless session so playback still works (first chunk only).
+ */
+export async function getStreamingInnertube() {
+  if (
+    globalForInnertube.innertube &&
+    globalForInnertube.innertubeHasToken &&
+    Date.now() < (globalForInnertube.innertubeExpiry ?? 0)
+  ) {
+    return globalForInnertube.innertube;
+  }
+  if (tokenPromise) return tokenPromise;
+
+  tokenPromise = (async () => {
+    try {
+      const seed = await Innertube.create({ retrieve_player: false });
+      const visitorData: string | undefined = seed.session.context.client.visitorData;
+      if (visitorData) {
+        const poToken = await generateWebPoToken(visitorData);
+        globalForInnertube.innertube = await Innertube.create({
+          cache: new UniversalCache(false),
+          generate_session_locally: true,
+          po_token: poToken,
+          visitor_data: visitorData,
+        });
+        globalForInnertube.innertubeHasToken = true;
+        globalForInnertube.innertubeExpiry = Date.now() + SESSION_TTL_MS;
+        console.log('[InnerTube] WebPO token minted (streaming session ready).');
+      }
+    } catch (err) {
+      console.error('[InnerTube] PO token mint failed — using tokenless session:', err);
+    } finally {
+      tokenPromise = null;
+    }
+    return globalForInnertube.innertube ?? getInnertube();
+  })();
+
+  return tokenPromise;
 }
 
 /** Drop the cached session so the next call re-mints the PO token. */
 export function resetInnertube() {
   globalForInnertube.innertube = undefined;
+  globalForInnertube.innertubeHasToken = undefined;
   globalForInnertube.innertubeExpiry = undefined;
-  initializationPromise = null;
+  initPromise = null;
+  tokenPromise = null;
 }

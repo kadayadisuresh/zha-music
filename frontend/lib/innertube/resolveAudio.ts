@@ -1,4 +1,4 @@
-import { getInnertube } from './session';
+import { getStreamingInnertube } from './session';
 
 export type StreamClient = 'IOS' | 'ANDROID' | 'TV' | 'TV_SIMPLY' | 'WEB' | 'MWEB' | 'YTMUSIC';
 
@@ -30,7 +30,7 @@ export async function resolveAudioStream(
     throw new Error('Invalid videoId format');
   }
 
-  const innertube = await getInnertube();
+  const innertube = await getStreamingInnertube();
   if (!innertube) throw new Error('InnerTube not initialized');
 
   const info = await innertube.getInfo(videoId, { client });
