@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveAudioStream } from '@/lib/innertube/resolveAudio';
-import { debugMintToken } from '@/lib/innertube/session';
+import { debugMintToken, getStreamingInnertube } from '@/lib/innertube/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,13 +31,27 @@ export async function GET(req: NextRequest) {
   // The actual end-to-end PO-token mint (BotGuard challenge → integrity → mint).
   out.mint = await debugMintToken();
 
-  for (const client of ['TV_SIMPLY', 'IOS'] as const) {
-    try {
-      const r = await resolveAudioStream(videoId, client);
-      out[client] = { ok: true, hasPot: /[?&]pot=/.test(r.url), contentLength: r.contentLength, mime: r.mimeType };
-    } catch (e: any) {
-      out[client] = { ok: false, err: e?.message || String(e) };
+  // Inspect getInfo per client on the token-bound session: playability + whether
+  // YouTube actually returned streaming formats (vs flagging the datacenter IP).
+  try {
+    const yt: any = await getStreamingInnertube();
+    out.sessionHasToken = !!yt?.session?.po_token;
+    for (const client of ['TV_SIMPLY', 'WEB', 'IOS', 'MWEB', 'ANDROID'] as const) {
+      try {
+        const info: any = await yt.getInfo(videoId, { client });
+        out['client_' + client] = {
+          playability: info?.playability_status?.status,
+          reason: info?.playability_status?.reason || info?.playability_status?.error_screen?.reason?.text,
+          hasStreamingData: !!info?.streaming_data,
+          adaptiveFormats: info?.streaming_data?.adaptive_formats?.length || 0,
+          title: info?.basic_info?.title,
+        };
+      } catch (e: any) {
+        out['client_' + client] = { err: e?.message || String(e) };
+      }
     }
+  } catch (e: any) {
+    out.streamingSession = 'FAIL: ' + (e?.message || String(e));
   }
 
   return NextResponse.json(out);
