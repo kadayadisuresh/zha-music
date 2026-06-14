@@ -3,7 +3,7 @@
 import React, { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Music2, Loader2 } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api/client";
+import * as sb from "@/lib/supabase/data";
 import { useUserStore } from "@/lib/stores/userStore";
 
 interface JoinPageProps {
@@ -13,7 +13,7 @@ interface JoinPageProps {
 export default function JoinPlaylistPage({ params }: JoinPageProps) {
   const { token } = use(params);
   const router = useRouter();
-  const { user, checkSession } = useUserStore();
+  const { checkSession } = useUserStore();
   const [status, setStatus] = useState<"loading" | "needs-auth" | "error">("loading");
 
   useEffect(() => {
@@ -21,19 +21,15 @@ export default function JoinPlaylistPage({ params }: JoinPageProps) {
     (async () => {
       // Ensure we know the session state first
       await checkSession();
+      if (cancelled) return;
+      if (!useUserStore.getState().user) {
+        setStatus("needs-auth");
+        return;
+      }
       try {
-        const res = await fetch(`${API_BASE_URL}/playlist/join/${token}`, { credentials: "include" });
+        const playlistId = await sb.joinPlaylistViaToken(token);
         if (cancelled) return;
-        if (res.status === 401) {
-          setStatus("needs-auth");
-          return;
-        }
-        if (!res.ok) {
-          setStatus("error");
-          return;
-        }
-        const data = await res.json();
-        router.replace(`/playlist/${data.playlist_id}`);
+        router.replace(`/playlist/${playlistId}`);
       } catch {
         if (!cancelled) setStatus("error");
       }
@@ -61,7 +57,11 @@ export default function JoinPlaylistPage({ params }: JoinPageProps) {
           <h1 className="text-xl font-bold text-white mb-2">Sign in to join</h1>
           <p className="text-zinc-400 text-sm mb-5">You need an account to collaborate on this playlist.</p>
           <button
-            onClick={() => useUserStore.getState().signInWithGoogle()}
+            onClick={() =>
+              useUserStore.getState().signInWithGoogle(
+                typeof window !== "undefined" ? window.location.href : undefined
+              )
+            }
             className="bg-white text-black font-bold px-6 py-3 rounded-full hover:bg-zinc-200 transition-colors"
           >
             Continue with Google

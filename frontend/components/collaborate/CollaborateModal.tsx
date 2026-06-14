@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, Link2, Check, Copy, X, Loader2 } from 'lucide-react';
-import { apiClient } from '@/lib/api/client';
+import * as sb from '@/lib/supabase/data';
 import { usePlaylistStore } from '@/lib/stores/playlistStore';
 import { useUserStore } from '@/lib/stores/userStore';
 
@@ -61,10 +61,7 @@ export const CollaborateModal = ({ open, onClose }: CollaborateModalProps) => {
       // 1. Create the playlist (owned by the current user).
       const playlist = await createPlaylist(title.trim(), description.trim());
       // 2. Mint an invite token — this also flips the playlist to collaborative.
-      const { token } = await apiClient<{ token: string }>(
-        `/playlist/${playlist.id}/invite`,
-        { method: 'POST' }
-      );
+      const token = await sb.createInviteToken(Number(playlist.id));
       const link = `${window.location.origin}/playlist/join/${token}`;
       setPlaylistId(playlist.id);
       setShareLink(link);

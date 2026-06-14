@@ -214,3 +214,87 @@ export async function unfollowArtist(channelId: string): Promise<void> {
   const { error } = await getSupabase().from('followed_artists').delete().eq('channel_id', channelId);
   if (error) throw error;
 }
+
+// ── Collaborative invites (Slice 3) ──────────────────────────────────────────
+function randomInviteToken(): string {
+  // 24 random bytes → 32-char url-safe string (matches the old token_urlsafe(24)).
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  let bin = '';
+  bytes.forEach((b) => { bin += String.fromCharCode(b); });
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** Flip the playlist to collaborative (owner-only) and mint a 7-day invite token. */
+export async function createInviteToken(playlistId: number): Promise<string> {
+  const supabase = getSupabase();
+  const created_by = await currentUserId();
+
+  const { error: upErr } = await supabase
+    .from('playlists')
+    .update({ is_collaborative: true })
+    .eq('id', playlistId);
+  if (upErr) throw upErr;
+
+  const token = randomInviteToken();
+  const expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { error } = await supabase
+    .from('playlist_invite_tokens')
+    .insert({ token, playlist_id: playlistId, created_by, expires_at });
+  if (error) throw error;
+  return token;
+}
+
+/** Validate an invite token and add the current user as a collaborator (RPC). */
+export async function joinPlaylistViaToken(token: string): Promise<number> {
+  const { data, error } = await getSupabase().rpc('join_playlist_via_token', { p_token: token });
+  if (error) throw error;
+  return data as number;
+}
+
+// ── Collaborative playlist chat (Slice 3) ────────────────────────────────────
+export interface PlaylistChatRow {
+  id: string;
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  text: string;
+  createdAt: string | null;
+}
+
+export async function getPlaylistMessages(playlistId: number): Promise<PlaylistChatRow[]> {
+  const { data, error } = await getSupabase()
+    .from('playlist_messages')
+    .select('id,user_id,display_name,avatar_url,text,created_at')
+    .eq('playlist_id', playlistId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    userId: r.user_id,
+    displayName: r.display_name ?? '',
+    avatarUrl: r.avatar_url ?? null,
+    text: r.text,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function insertPlaylistMessage(m: {
+  id: string;
+  playlistId: number;
+  userId: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  text: string;
+}): Promise<void> {
+  // playlist_messages.id (UUID) has no DB default — supply it (like play_history).
+  const { error } = await getSupabase().from('playlist_messages').insert({
+    id: m.id,
+    playlist_id: m.playlistId,
+    user_id: m.userId,
+    display_name: m.displayName,
+    avatar_url: m.avatarUrl,
+    text: m.text,
+  });
+  if (error) throw error;
+}

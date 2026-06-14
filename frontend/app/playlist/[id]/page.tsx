@@ -2,13 +2,14 @@
 
 import React, { useEffect, useState, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Music2, Play, Trash2, ArrowLeft, Search, Plus, X, Users, Check } from 'lucide-react';
+import { Music2, Play, Trash2, ArrowLeft, Search, Plus, X, Users, Check, MessageSquare } from 'lucide-react';
 import { usePlaylistCollab } from '@/components/playlist/PlaylistCollabContext';
+import { PlaylistChat } from '@/components/playlist/PlaylistChat';
 import Image from 'next/image';
 import { usePlaybackStore } from '@/lib/stores/playbackStore';
 import { usePlaylistStore, PlaylistDetails } from '@/lib/stores/playlistStore';
 import { useUserStore } from '@/lib/stores/userStore';
-import { API_BASE_URL } from '@/lib/api/client';
+import * as sb from '@/lib/supabase/data';
 import { TrackItem } from '@/components/shared/TrackItem';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/Button';
@@ -51,6 +52,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
   const collab = usePlaylistCollab();
   const [inviteCopied, setInviteCopied] = useState(false);
   const [changeBanner, setChangeBanner] = useState<string | null>(null);
+  const [showChat, setShowChat] = useState(false);
 
   const isOwner = !!(user && playlist?.owner_id && String(playlist.owner_id) === String(user.id));
   const isCollaborative = !!playlist?.is_collaborative;
@@ -122,8 +124,8 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
   };
 
   const handleRemoveTrack = async (songId: string) => {
-    // On a collaborative playlist, route through the WebSocket so the change
-    // persists once (server-side) and broadcasts to everyone. The broadcast
+    // On a collaborative playlist, route through Supabase Realtime so the change
+    // persists once (under RLS) and broadcasts to everyone. The broadcast
     // bumps `revision`, which reloads the list.
     if (isCollaborative && collab) {
       collab.removeTrack(songId);
@@ -156,12 +158,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
   const copyInviteLink = async (): Promise<boolean> => {
     if (!playlist) return false;
     try {
-      const res = await fetch(`${API_BASE_URL}/playlist/${playlist.id}/invite`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!res.ok) return false;
-      const { token } = await res.json();
+      const token = await sb.createInviteToken(Number(playlist.id));
       const link = `${window.location.origin}/playlist/join/${token}`;
       await navigator.clipboard.writeText(link);
       setInviteCopied(true);
@@ -178,7 +175,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
   const handleCollaborate = async () => {
     if (!playlist) return;
     if (!isCollaborative) setPlaylist({ ...playlist, is_collaborative: true });
-    // POST /invite already flips the playlist to collaborative server-side.
+    // createInviteToken() also flips the playlist to collaborative under RLS.
     await copyInviteLink();
   };
 
@@ -475,7 +472,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
                         disabled={isAlreadyAdded}
                         onClick={async () => {
                           if (isAlreadyAdded) return;
-                          // Collaborative: broadcast via WS (persists once + syncs everyone)
+                          // Collaborative: persist + broadcast via Realtime (syncs everyone)
                           if (isCollaborative && collab) {
                             collab.addTrack(song.id);
                             return;
@@ -505,6 +502,27 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Collaborative Chat (slide-in panel + toggle) ── */}
+      {isCollaborative && (
+        <>
+          <button
+            onClick={() => setShowChat((v) => !v)}
+            aria-label={showChat ? 'Close chat' : 'Open chat'}
+            className="fixed bottom-28 right-5 z-40 p-3.5 rounded-full bg-[#2E7DF7] hover:bg-[#1F5FD0] text-white shadow-2xl transition-all hover:scale-105 active:scale-95"
+          >
+            {showChat ? <X size={20} /> : <MessageSquare size={20} />}
+          </button>
+
+          <div
+            className={`fixed top-0 right-0 z-40 h-full w-full sm:w-[360px] transform transition-transform duration-300 ${
+              showChat ? 'translate-x-0' : 'translate-x-full pointer-events-none'
+            }`}
+          >
+            <PlaylistChat />
+          </div>
+        </>
       )}
 
     </div>

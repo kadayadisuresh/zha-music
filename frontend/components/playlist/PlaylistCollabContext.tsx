@@ -1,9 +1,30 @@
 "use client";
 
 import React, { createContext, useContext, useCallback, useEffect, useRef, useState } from "react";
-import { API_BASE_URL } from "@/lib/api/client";
+import type { RealtimeChannel } from "@supabase/supabase-js";
+import { getSupabase } from "@/lib/supabase/client";
+import * as sb from "@/lib/supabase/data";
 import { useUserStore } from "@/lib/stores/userStore";
-import { PlaylistSocket, ChatMessage, PresenceUser } from "@/lib/services/playlistSocket";
+
+// Phase 17 · Slice 3 — collaborative playlist realtime on Supabase Realtime
+// (Broadcast for chat + track-change events, Presence for who's online).
+// DB writes (songs, chat history) go through supabase-js under RLS.
+
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  text: string;
+  createdAt: string | null;
+  pending?: boolean;
+}
+
+export interface PresenceUser {
+  userId: string;
+  displayName: string;
+  avatarUrl?: string | null;
+}
 
 interface LastChange {
   actor: string;
@@ -17,7 +38,7 @@ interface CollabValue {
   online: PresenceUser[];
   messages: ChatMessage[];
   lastChange: LastChange | null;
-  revision: number; // bumps on any remote track change
+  revision: number;
   sendChat: (text: string) => void;
   addTrack: (songId: string) => void;
   removeTrack: (songId: string) => void;
@@ -27,7 +48,10 @@ interface CollabValue {
 const Ctx = createContext<CollabValue | null>(null);
 export const usePlaylistCollab = () => useContext(Ctx);
 
-const uid = () => Math.random().toString(36).slice(2);
+const newId = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 export function PlaylistCollabProvider({
   playlistId,
@@ -44,21 +68,10 @@ export function PlaylistCollabProvider({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [lastChange, setLastChange] = useState<LastChange | null>(null);
   const [revision, setRevision] = useState(0);
-  const socketRef = useRef<PlaylistSocket | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
-  const upsertMessage = useCallback((msg: ChatMessage, clientMsgId?: string) => {
-    setMessages((prev) => {
-      if (clientMsgId) {
-        const i = prev.findIndex((m) => m.clientMsgId === clientMsgId || m.id === clientMsgId);
-        if (i !== -1) {
-          const copy = [...prev];
-          copy[i] = { ...msg, pending: false };
-          return copy;
-        }
-      }
-      if (prev.some((m) => m.id === msg.id)) return prev;
-      return [...prev, msg];
-    });
+  const upsertMessage = useCallback((msg: ChatMessage) => {
+    setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
   }, []);
 
   useEffect(() => {
@@ -67,80 +80,137 @@ export function PlaylistCollabProvider({
       setOnline([]);
       return;
     }
-    let cancelled = false;
+    const numericId = Number(playlistId);
+    if (!Number.isFinite(numericId)) return;
 
-    fetch(`${API_BASE_URL}/playlist/${playlistId}/messages`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows) => !cancelled && Array.isArray(rows) && setMessages(rows))
+    let cancelled = false;
+    const supabase = getSupabase();
+
+    // Initial chat history (RLS: owner or collaborator)
+    sb.getPlaylistMessages(numericId)
+      .then((rows) => { if (!cancelled) setMessages(rows); })
       .catch(() => {});
 
-    const socket = new PlaylistSocket(playlistId, {
-      onChat: upsertMessage,
-      onSyncState: (users) => setOnline(users),
-      onPresence: (p) => {
-        setOnline((prev) => {
-          if (p.state === "leave") return prev.filter((u) => u.userId !== p.userId);
-          if (prev.some((u) => u.userId === p.userId)) return prev;
-          return [...prev, { userId: p.userId, displayName: p.displayName, avatarUrl: p.avatarUrl }];
-        });
-      },
-      onTrackChange: (kind, payload) => {
-        setLastChange({ actor: payload?.actor?.displayName || "Someone", kind, at: Date.now() });
-        setRevision((r) => r + 1);
-      },
-      onStatus: setConnected,
+    const channel = supabase.channel(`playlist:${playlistId}`, {
+      config: { presence: { key: user.id }, broadcast: { self: true } },
     });
-    socket.connect();
-    socketRef.current = socket;
+    channelRef.current = channel;
+
+    channel
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        const seen = new Map<string, PresenceUser>();
+        Object.values(state).forEach((metas) =>
+          (metas as Array<Record<string, unknown>>).forEach((m) =>
+            seen.set(m.userId as string, {
+              userId: m.userId as string,
+              displayName: m.displayName as string,
+              avatarUrl: (m.avatarUrl as string | null) ?? null,
+            })
+          )
+        );
+        setOnline([...seen.values()]);
+      })
+      .on("broadcast", { event: "chat" }, ({ payload }) => upsertMessage(payload as ChatMessage))
+      .on("broadcast", { event: "track_change" }, ({ payload }) => {
+        const p = payload as { kind: string; actor?: { displayName?: string } };
+        setLastChange({ actor: p.actor?.displayName || "Someone", kind: p.kind, at: Date.now() });
+        setRevision((r) => r + 1);
+      })
+      .subscribe((status) => {
+        if (cancelled) return;
+        if (status === "SUBSCRIBED") {
+          setConnected(true);
+          channel.track({
+            userId: user.id,
+            displayName: user.display_name || "Anonymous",
+            avatarUrl: user.avatar_url ?? null,
+          });
+        } else if (status === "CLOSED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setConnected(false);
+        }
+      });
 
     return () => {
       cancelled = true;
-      socket.disconnect();
-      socketRef.current = null;
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+      setConnected(false);
     };
   }, [playlistId, enabled, user, upsertMessage]);
 
   const sendChat = useCallback(
     (text: string) => {
       const t = text.trim();
-      if (!t || !socketRef.current || !user) return;
-      const clientMsgId = uid();
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: clientMsgId,
-          clientMsgId,
-          userId: user.id,
-          displayName: user.display_name || "You",
-          avatarUrl: user.avatar_url,
-          text: t,
-          createdAt: new Date().toISOString(),
-          pending: true,
-        },
-      ]);
-      socketRef.current.sendChat(t, clientMsgId);
+      const channel = channelRef.current;
+      if (!t || !channel || !user) return;
+      const msg: ChatMessage = {
+        id: newId(),
+        userId: user.id,
+        displayName: user.display_name || "You",
+        avatarUrl: user.avatar_url ?? null,
+        text: t,
+        createdAt: new Date().toISOString(),
+      };
+      upsertMessage(msg); // optimistic; the self-echoed broadcast dedupes by id
+      channel.send({ type: "broadcast", event: "chat", payload: msg });
+      sb.insertPlaylistMessage({
+        id: msg.id,
+        playlistId: Number(playlistId),
+        userId: user.id,
+        displayName: msg.displayName,
+        avatarUrl: msg.avatarUrl ?? null,
+        text: t,
+      }).catch(() => {});
+    },
+    [user, playlistId, upsertMessage]
+  );
+
+  const broadcastTrackChange = useCallback(
+    (kind: string) => {
+      // self:true → the sender also receives this, bumping its own revision so
+      // its track list refetches (banner is suppressed for one's own change).
+      channelRef.current?.send({
+        type: "broadcast",
+        event: "track_change",
+        payload: { kind, actor: { displayName: user?.display_name || "Someone" } },
+      });
     },
     [user]
   );
 
-  const addTrack = useCallback((songId: string) => socketRef.current?.addTrack(songId), []);
-  const removeTrack = useCallback((songId: string) => socketRef.current?.removeTrack(songId), []);
+  const addTrack = useCallback(
+    async (songId: string) => {
+      try {
+        await sb.addSongToPlaylist(Number(playlistId), songId);
+        broadcastTrackChange("track_added");
+      } catch (e) { console.error("collab addTrack failed", e); }
+    },
+    [playlistId, broadcastTrackChange]
+  );
+
+  const removeTrack = useCallback(
+    async (songId: string) => {
+      try {
+        await sb.removeSongFromPlaylist(Number(playlistId), songId);
+        broadcastTrackChange("track_removed");
+      } catch (e) { console.error("collab removeTrack failed", e); }
+    },
+    [playlistId, broadcastTrackChange]
+  );
+
   const reorderTrack = useCallback(
-    (songId: string, newPosition: number) => socketRef.current?.reorderTrack(songId, newPosition),
-    []
+    (_songId: string, _newPosition: number) => {
+      // Reorder persistence isn't in the supabase data layer yet; broadcasting
+      // keeps collaborators in sync once a reorder write is added.
+      broadcastTrackChange("track_reordered");
+    },
+    [broadcastTrackChange]
   );
 
   const value: CollabValue = {
-    enabled,
-    connected,
-    online,
-    messages,
-    lastChange,
-    revision,
-    sendChat,
-    addTrack,
-    removeTrack,
-    reorderTrack,
+    enabled, connected, online, messages, lastChange, revision,
+    sendChat, addTrack, removeTrack, reorderTrack,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

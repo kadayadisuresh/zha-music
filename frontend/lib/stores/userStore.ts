@@ -33,8 +33,9 @@ interface UserState {
   error: string | null;
   /** Load the current Supabase session and subscribe to auth changes (once). */
   checkSession: () => Promise<void>;
-  /** Start the Google OAuth flow via Supabase (redirects the browser). */
-  signInWithGoogle: () => Promise<void>;
+  /** Start the Google OAuth flow via Supabase (redirects the browser). Pass
+   *  `redirectTo` to return somewhere other than the app origin after auth. */
+  signInWithGoogle: (redirectTo?: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: User | null) => void;
 }
@@ -69,14 +70,13 @@ export const useUserStore = create<UserState>((set) => ({
     }
   },
 
-  signInWithGoogle: async () => {
+  signInWithGoogle: async (redirectTo?: string) => {
     set({ error: null });
     const supabase = getSupabase();
+    const target = redirectTo ?? (typeof window !== 'undefined' ? window.location.origin : undefined);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
-      },
+      options: { redirectTo: target },
     });
     if (error) set({ error: error.message });
   },
