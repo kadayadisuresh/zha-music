@@ -189,6 +189,20 @@ export async function getStreamingInnertube() {
   return tokenPromise;
 }
 
+/** TEMP debug: run the full PO-token mint and surface where it fails. */
+export async function debugMintToken(): Promise<Record<string, unknown>> {
+  try {
+    const seed = await Innertube.create({ retrieve_player: false });
+    const visitorData: string | undefined = seed.session.context.client.visitorData;
+    if (!visitorData) return { ok: false, stage: 'visitorData', error: 'no visitorData' };
+    const token = await generateWebPoToken(visitorData);
+    return { ok: true, tokenLen: token.length, tokenSample: token.slice(0, 12) };
+  } catch (e) {
+    const err = e as Error;
+    return { ok: false, error: err?.message || String(e), stack: String(err?.stack || '').split('\n').slice(0, 6) };
+  }
+}
+
 /** Drop the cached session so the next call re-mints the PO token. */
 export function resetInnertube() {
   globalForInnertube.innertube = undefined;

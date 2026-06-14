@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveAudioStream } from '@/lib/innertube/resolveAudio';
+import { debugMintToken } from '@/lib/innertube/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,9 @@ export async function GET(req: NextRequest) {
   } catch (e: any) {
     out.bgutils = 'FAIL: ' + (e?.message || String(e));
   }
+
+  // The actual end-to-end PO-token mint (BotGuard challenge → integrity → mint).
+  out.mint = await debugMintToken();
 
   for (const client of ['TV_SIMPLY', 'IOS'] as const) {
     try {
