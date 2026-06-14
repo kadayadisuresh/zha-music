@@ -4,11 +4,10 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Search, Library, Music2, PlusSquare, Heart, Disc, Radio, TrendingUp, Download, Plus, Headphones, Users } from 'lucide-react';
+import { Home, Search, Library, Music2, PlusSquare, Heart, Disc, Radio, TrendingUp, Download, Plus, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUserStore } from '@/lib/stores/userStore';
 import { usePlaylistStore } from '@/lib/stores/playlistStore';
-import { useJamStore } from '@/lib/stores/jamStore';
 import * as sb from '@/lib/supabase/data';
 import { CollaborateModal } from '@/components/collaborate/CollaborateModal';
 
@@ -31,9 +30,6 @@ export const Sidebar = () => {
   const router = useRouter();
   const { user } = useUserStore();
   const { playlists, fetchPlaylists, createPlaylist } = usePlaylistStore();
-  const jamActive = useJamStore((s) => s.active);
-  const startJam = useJamStore((s) => s.startJam);
-  const setShowInvite = useJamStore((s) => s.setShowInvite);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [playlistTitle, setPlaylistTitle] = useState('');
@@ -162,24 +158,6 @@ export const Sidebar = () => {
             </Link>
           );
         })}
-
-        {/* Jam — start a shared listening session, or open the live one */}
-        <button
-          onClick={() => (jamActive ? setShowInvite(true) : startJam())}
-          className={cn(
-            "w-full flex items-center gap-4 px-3 py-3 rounded-lg transition-all group",
-            jamActive ? "bg-red-500/15 text-white" : "text-zinc-400 hover:text-white hover:bg-zinc-900"
-          )}
-        >
-          <Headphones className={cn("w-6 h-6", jamActive ? "text-red-500" : "group-hover:text-red-600 transition-colors")} />
-          <span className="font-semibold">{jamActive ? "Jam · Live" : "Start a Jam"}</span>
-          {jamActive && (
-            <span className="relative flex h-2 w-2 ml-auto">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-            </span>
-          )}
-        </button>
 
         {/* Collaborate — create a shared playlist and get a sharing link */}
         <button

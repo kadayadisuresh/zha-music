@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { SearchBar } from '../search/SearchBar';
 import { useUserStore } from '@/lib/stores/userStore';
 import { Bell, Settings } from 'lucide-react';
@@ -17,7 +17,9 @@ export const Navbar = () => {
       <div className="flex items-center justify-between h-full px-6 max-w-screen-2xl mx-auto gap-8">
         {/* Search Bar - Hidden on mobile if needed, but for now let's keep it */}
         <div className="flex-1 max-w-xl">
-          <SearchBar />
+          <Suspense fallback={<div className="h-10 w-full rounded-full bg-white/5" />}>
+            <SearchBar />
+          </Suspense>
         </div>
 
         {/* Actions */}

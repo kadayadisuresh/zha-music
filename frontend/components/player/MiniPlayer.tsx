@@ -5,7 +5,6 @@ import { usePlaybackStore } from '@/lib/stores/playbackStore';
 import { useUIStore } from '@/lib/stores/uiStore';
 import { ProgressBar } from './ProgressBar';
 import { PlayerControls } from './PlayerControls';
-import { JamIndicator } from '@/components/jam/JamIndicator';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
@@ -52,9 +51,8 @@ export const MiniPlayer: React.FC = () => {
 
             {/* Controls */}
             <div className="flex items-center gap-2 ml-2 md:ml-4" onClick={(e) => e.stopPropagation()}>
-              {/* Desktop: prev / play / next with jam indicator */}
+              {/* Desktop: prev / play / next */}
               <div className="hidden md:flex items-center gap-2">
-                <JamIndicator compact />
                 <PlayerControls variant="mini" />
               </div>
               {/* Mobile: Spotify-style connect · add · play/pause */}

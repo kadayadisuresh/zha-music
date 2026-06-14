@@ -1,4 +1,4 @@
-import { defaultCache } from "@serwist/next/browser";
+import { defaultCache } from "@serwist/next/worker";
 import { type PrecacheEntry, Serwist, type SerwistGlobalConfig } from "serwist";
 
 declare global {

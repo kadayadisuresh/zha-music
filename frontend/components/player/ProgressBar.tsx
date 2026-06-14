@@ -2,7 +2,6 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { usePlaybackStore } from '@/lib/stores/playbackStore';
-import { useJamStore } from '@/lib/stores/jamStore';
 import { audioEngine } from '@/lib/audio/AudioEngine';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 
@@ -12,8 +11,6 @@ interface ProgressBarProps {
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({ isMini = false }) => {
   const duration = usePlaybackStore((s) => s.duration);
-  // In a Jam, only the host can scrub; guests follow the host's position.
-  const isGuest = useJamStore((s) => s.active && !s.isHost);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -45,7 +42,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ isMini = false }) => {
   }, [progress]);
 
   const onMouseDown = (e: React.MouseEvent) => {
-    if (duration === 0 || isGuest) return;
+    if (duration === 0) return;
     setIsDragging(true);
     isDraggingRef.current = true;
     progress.set(posFromClientX(e.clientX));
@@ -74,7 +71,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ isMini = false }) => {
 
   return (
     <div
-      className={`relative w-full group ${isGuest ? 'cursor-default' : 'cursor-pointer'} ${isMini ? 'h-[3px]' : 'h-1 py-4'}`}
+      className={`relative w-full group cursor-pointer ${isMini ? 'h-[3px]' : 'h-1 py-4'}`}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onMouseDown={onMouseDown}

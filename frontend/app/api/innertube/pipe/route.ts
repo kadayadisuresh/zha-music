@@ -4,6 +4,9 @@ import { resetInnertube } from '@/lib/innertube/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// Streaming a full-file download chains 1 MiB chunks; give it headroom (and the
+// cold-start PO-token mint adds a few seconds on the first request).
+export const maxDuration = 60;
 
 interface Resolved { url: string; mimeType: string; contentLength: number }
 

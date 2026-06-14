@@ -3,9 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, Library, Plus, X, Music2, Users, Headphones } from 'lucide-react';
+import { Home, Search, Library, Plus, X, Music2, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useJamStore } from '@/lib/stores/jamStore';
 import { useUIStore } from '@/lib/stores/uiStore';
 import { CollaborateModal } from '@/components/collaborate/CollaborateModal';
 import { CreatePlaylistModal } from '@/components/shared/CreatePlaylistModal';
@@ -23,7 +22,6 @@ const NAV_ITEMS = [
  */
 export function MobileBottomNav() {
   const pathname = usePathname();
-  const startJam = useJamStore((s) => s.startJam);
   // The full player is a full-screen takeover — hide the bottom nav while it's
   // open so it doesn't cover the player's Up Next / Lyrics / Related tabs.
   const isPlayerExpanded = useUIStore((s) => s.isPlayerExpanded);
@@ -46,12 +44,6 @@ export function MobileBottomNav() {
       title: 'Collaborative playlist',
       desc: 'Create a playlist together with friends',
       onClick: () => { setShowCreate(false); setShowCollab(true); },
-    },
-    {
-      icon: Headphones,
-      title: 'Jam',
-      desc: 'Listen together from anywhere',
-      onClick: () => { setShowCreate(false); startJam(); },
     },
   ];
 

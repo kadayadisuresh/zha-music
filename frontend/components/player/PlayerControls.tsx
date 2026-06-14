@@ -16,16 +16,13 @@ import {
   Clock,
   Share,
   Download,
-  Headphones,
   Heart
 } from "lucide-react";
 import { usePlaybackStore } from "@/lib/stores/playbackStore";
 import { useDownloadStore } from "@/lib/stores/downloadStore";
-import { useJamStore } from "@/lib/stores/jamStore";
 import { Button } from "@/components/ui/Button";
 import { SharePopover } from "@/components/shared/SharePopover";
 import { SleepTimerModal } from "./SleepTimerModal";
-import { JamIndicator } from "@/components/jam/JamIndicator";
 import { cn } from "@/lib/utils";
 
 interface PlayerControlsProps {
@@ -56,14 +53,6 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ variant = "full"
   const [isSleepModalOpen, setIsSleepModalOpen] = useState(false);
   const [radioState, setRadioState] = useState<'idle' | 'loading' | 'added' | 'empty'>('idle');
   const [sleepRemaining, setSleepRemaining] = useState<string | null>(null);
-
-  // Jam: guests can't drive playback (host-controlled). The headphones button
-  // starts a jam, or opens the invite modal when one is already live.
-  const jamActive = useJamStore((s) => s.active);
-  const isJamHost = useJamStore((s) => s.isHost);
-  const startJam = useJamStore((s) => s.startJam);
-  const setShowInvite = useJamStore((s) => s.setShowInvite);
-  const isGuest = jamActive && !isJamHost;
 
   // Live countdown for an active minute-based sleep timer (SRD 5.20)
   useEffect(() => {
@@ -97,7 +86,6 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ variant = "full"
   const isMutedVal = !!isMuted;
 
   const handleTogglePlay = () => {
-    if (isGuest) return; // host controls playback in a jam
     import('@/lib/audio/AudioEngine').then(({ audioEngine }) => {
       if (isPlaying) {
         audioEngine.pause();
@@ -105,11 +93,6 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ variant = "full"
         audioEngine.play(currentTrack.id, currentTrack);
       }
     });
-  };
-
-  const handleJamButton = () => {
-    if (jamActive) setShowInvite(true);
-    else startJam();
   };
 
   const isLiked = currentTrack ? isTrackLiked(currentTrack.id) : false;
@@ -130,18 +113,9 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ variant = "full"
     : 'Start radio';
 
   if (variant === "mobileMini") {
-    // Spotify-style mobile mini player: connect/Jam · add-to-library · play/pause
+    // Spotify-style mobile mini player: add-to-library · play/pause
     return (
       <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleJamButton}
-          aria-label={jamActive ? "Jam session" : "Connect / Start a Jam"}
-          className={cn("p-2", jamActive ? "text-[#2E7DF7]" : "text-zinc-200 hover:text-white")}
-        >
-          <Headphones size={20} />
-        </Button>
         <Button
           variant="ghost"
           size="sm"
@@ -155,9 +129,8 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ variant = "full"
           variant="ghost"
           size="sm"
           onClick={handleTogglePlay}
-          disabled={isGuest}
           aria-label={isPlaying ? "Pause" : "Play"}
-          className={cn("text-white p-1", isGuest && "opacity-40 cursor-not-allowed")}
+          className="text-white p-1"
         >
           {isPlaying ? <Pause size={26} fill="currentColor" /> : <Play size={26} fill="currentColor" />}
         </Button>
@@ -168,19 +141,18 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ variant = "full"
   if (variant === "mini") {
     return (
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={skipPrevious} disabled={isGuest} className={cn("text-zinc-400 hover:text-white", isGuest && "opacity-30 cursor-not-allowed")}>
+        <Button variant="ghost" size="sm" onClick={skipPrevious} className="text-zinc-400 hover:text-white">
           <SkipBack size={20} fill="currentColor" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={handleTogglePlay}
-          disabled={isGuest}
-          className={cn("bg-white/10 hover:bg-white/20 text-white rounded-full p-2", isGuest && "opacity-40 cursor-not-allowed")}
+          className="bg-white/10 hover:bg-white/20 text-white rounded-full p-2"
         >
           {isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
         </Button>
-        <Button variant="ghost" size="sm" onClick={skipNext} disabled={isGuest} className={cn("text-zinc-400 hover:text-white", isGuest && "opacity-30 cursor-not-allowed")}>
+        <Button variant="ghost" size="sm" onClick={skipNext} className="text-zinc-400 hover:text-white">
           <SkipForward size={20} fill="currentColor" />
         </Button>
       </div>
@@ -201,21 +173,19 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ variant = "full"
         </Button>
 
         <div className="flex items-center gap-6">
-          <Button variant="ghost" onClick={skipPrevious} disabled={isGuest} className={cn("text-white", isGuest && "opacity-30 cursor-not-allowed")}>
+          <Button variant="ghost" onClick={skipPrevious} className="text-white">
             <SkipBack size={28} fill="currentColor" />
           </Button>
 
           <Button
             variant="primary"
             onClick={handleTogglePlay}
-            disabled={isGuest}
-            title={isGuest ? "The host controls playback in this Jam" : undefined}
-            className={cn("w-16 h-16 bg-[#2E7DF7] text-white hover:bg-[#2E7DF7]/90 rounded-full flex items-center justify-center", isGuest && "opacity-50 cursor-not-allowed")}
+            className="w-16 h-16 bg-[#2E7DF7] text-white hover:bg-[#2E7DF7]/90 rounded-full flex items-center justify-center"
           >
             {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
           </Button>
 
-          <Button variant="ghost" onClick={skipNext} disabled={isGuest} className={cn("text-white", isGuest && "opacity-30 cursor-not-allowed")}>
+          <Button variant="ghost" onClick={skipNext} className="text-white">
             <SkipForward size={28} fill="currentColor" />
           </Button>
         </div>
@@ -339,17 +309,6 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ variant = "full"
           )}
         >
           <Radio size={18} />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleJamButton}
-          title={jamActive ? "Jam session" : "Start a Jam"}
-          aria-label={jamActive ? "Jam session" : "Start a Jam"}
-          className={cn("transition-colors", jamActive ? "text-[#2E7DF7] hover:text-[#5b9bff]" : "text-zinc-400 hover:text-white")}
-        >
-          <Headphones size={18} />
         </Button>
         {currentTrack && (
           <SharePopover

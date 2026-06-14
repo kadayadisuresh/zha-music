@@ -16,7 +16,6 @@ import { formatTime, cn } from "@/lib/utils";
 import { QueueList } from "../queue/QueueList";
 import { LyricsView } from "./LyricsView";
 import { TrackContextMenu } from "../shared/TrackContextMenu";
-import { JamIndicator } from "@/components/jam/JamIndicator";
 
 export const FullPlayer: React.FC = () => {
   const { currentTrack, currentTime, duration, toggleLikeTrack, isTrackLiked } = usePlaybackStore();
@@ -80,9 +79,6 @@ export const FullPlayer: React.FC = () => {
               </Button>
               <div className="flex-1 flex items-center justify-center md:justify-start gap-3 md:px-4">
                 <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Now Playing</h2>
-                <div onClick={(e) => e.stopPropagation()}>
-                  <JamIndicator />
-                </div>
               </div>
               <Button variant="ghost" size="sm" onClick={handleDismiss} className="text-white hidden md:flex">
                 <ChevronDown size={24} />

@@ -8,8 +8,6 @@ import { ClientBootstrapper } from "@/components/layout/ClientBootstrapper";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import PWAUpdateToast from "@/components/pwa/PWAUpdateToast";
 import { PlaybackAnnouncer } from "@/components/player/PlaybackAnnouncer";
-import { JamController } from "@/components/jam/JamController";
-import { JamModal } from "@/components/jam/JamModal";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import "./globals.css";
 
@@ -57,8 +55,6 @@ export default function RootLayout({
         <MiniPlayer />
         <FullPlayer />
         <MobileBottomNav />
-        <JamController />
-        <JamModal />
       </body>
     </html>
   );

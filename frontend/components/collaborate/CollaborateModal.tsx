@@ -15,7 +15,7 @@ interface CollaborateModalProps {
 type Step = 'form' | 'done';
 
 /**
- * Create-a-collaborative-playlist flow, launched from the sidebar (next to Jam).
+ * Create-a-collaborative-playlist flow, launched from the sidebar.
  * Step 1: name the playlist. On submit we create it, flip it to collaborative,
  * and mint an invite token — Step 2 shows the ready-to-share link.
  */
