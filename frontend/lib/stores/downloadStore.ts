@@ -109,10 +109,26 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
       },
     }));
 
-    // Use our server-side pipe endpoint (youtubei.js) which resolves and
-    // streams the full audio without CORS or 403 errors.
-    const downloadUrl = `/api/innertube/pipe?video_id=${track.id}`;
-    const contentLength = 0; // The worker will read it from the Content-Length header of the response
+    // Resolve the direct googlevideo CDN URL; the worker fetches the bytes from
+    // YouTube directly (no server proxy). NOTE: cross-origin fetch of the CDN may
+    // be blocked by CORS in some browsers — playback (the <audio> element) is not
+    // affected, but downloads can fail.
+    let downloadUrl: string;
+    try {
+      const res = await fetch(`/api/innertube/stream?videoId=${track.id}`);
+      const data = await res.json();
+      if (!res.ok || !data?.url) throw new Error(`resolve failed: ${res.status}`);
+      downloadUrl = data.url;
+    } catch (err) {
+      console.error('Failed to resolve download URL:', err);
+      set((state) => {
+        const next = { ...state.activeDownloads };
+        delete next[track.id];
+        return { activeDownloads: next };
+      });
+      return;
+    }
+    const contentLength = 0; // The worker reads it from the Content-Length header.
 
     if (worker) {
       worker.postMessage({

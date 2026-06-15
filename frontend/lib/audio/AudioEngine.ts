@@ -373,41 +373,55 @@ class AudioEngine {
     }
 
     try {
-      // Use the server-side pipe endpoint to stream audio through Next.js
-      // This avoids CORS issues with direct googlevideo.com CDN URLs
-      const pipeUrl = `/api/innertube/pipe?video_id=${videoId}`;
-      console.log(`[AudioEngine] Using pipe URL for videoId: ${videoId}`);
+      // Resolve the direct googlevideo CDN URL (server-side) and let the browser
+      // stream it straight from YouTube's CDN — the audio bytes never touch the
+      // server, so they come from the user's (residential) IP.
+      const streamUrl = await this.resolveStreamUrl(videoId);
 
       const { volume, isMuted } = usePlaybackStore.getState();
       const vol = typeof volume === 'number' && !isNaN(volume) ? volume : 1.0;
       const muted = !!isMuted;
-      
-      console.log(`[AudioEngine] Setting active player src to pipe URL. activePlayerIdx: ${this.activeIdx}, volume: ${vol}, isMuted: ${muted}`);
+
+      console.log(`[AudioEngine] Setting active player src to direct CDN URL. activePlayerIdx: ${this.activeIdx}, volume: ${vol}, isMuted: ${muted}`);
       this.activePlayer.volume = muted ? 0 : vol;
-      this.activePlayer.src = pipeUrl;
+      this.activePlayer.src = streamUrl;
       this.safePlay(this.activePlayer);
     } catch (error) {
-      console.error(`[AudioEngine] Pipe playback error:`, error);
-      this.playWithProxy(videoId);
+      console.error(`[AudioEngine] Stream resolution failed:`, error);
+      usePlaybackStore.getState().setIsLoading(false);
+      usePlaybackStore.getState().setPlaying(false);
     }
   }
 
-  // On a playback error, retry through the same youtubei.js pipe but force a
-  // fresh resolution (`refresh=1`) in case the cached CDN URL expired. Slice 4
-  // replaced the old FastAPI/yt-dlp proxy fallback with this self-contained path.
-  private playWithProxy(videoId: string) {
+  // Resolve the direct googlevideo URL for a video via the stream route.
+  private async resolveStreamUrl(videoId: string): Promise<string> {
+    const res = await fetch(`/api/innertube/stream?videoId=${videoId}`);
+    if (!res.ok) throw new Error(`stream resolve failed: ${res.status}`);
+    const data = await res.json();
+    if (!data?.url) throw new Error('no stream url returned');
+    return data.url as string;
+  }
+
+  // On a playback error, re-resolve a fresh CDN URL (the previous one may have
+  // expired) and retry once.
+  private async playWithProxy(videoId: string) {
     this.isProxyFallback = true;
+    try {
+      const streamUrl = await this.resolveStreamUrl(videoId);
+      const { volume, isMuted } = usePlaybackStore.getState();
+      const vol = typeof volume === 'number' && !isNaN(volume) ? volume : 1.0;
+      const muted = !!isMuted;
 
-    const { volume, isMuted } = usePlaybackStore.getState();
-    const vol = typeof volume === 'number' && !isNaN(volume) ? volume : 1.0;
-    const muted = !!isMuted;
-    const retryUrl = `/api/innertube/pipe?video_id=${videoId}&refresh=1`;
-
-    console.log(`[AudioEngine] Fresh-resolve retry. activePlayerIdx: ${this.activeIdx}, src: ${retryUrl}, volume: ${vol}, isMuted: ${muted}`);
-    this.activePlayer.volume = muted ? 0 : vol;
-    this.activePlayer.src = retryUrl;
-    this.activePlayer.load();
-    this.safePlay(this.activePlayer);
+      console.log(`[AudioEngine] Fresh-resolve retry with direct CDN URL. activePlayerIdx: ${this.activeIdx}`);
+      this.activePlayer.volume = muted ? 0 : vol;
+      this.activePlayer.src = streamUrl;
+      this.activePlayer.load();
+      this.safePlay(this.activePlayer);
+    } catch (error) {
+      console.error('[AudioEngine] Fresh-resolve retry failed:', error);
+      usePlaybackStore.getState().setIsLoading(false);
+      usePlaybackStore.getState().setPlaying(false);
+    }
   }
 
   async prepareNext(track: Track) {
@@ -430,10 +444,10 @@ class AudioEngine {
     }
 
     try {
-      // Use the pipe endpoint for next track pre-loading
-      const pipeUrl = `/api/innertube/pipe?video_id=${track.id}`;
+      // Pre-resolve the next track's direct CDN URL.
+      const streamUrl = await this.resolveStreamUrl(track.id);
       const inactive = this.inactivePlayer;
-      inactive.src = pipeUrl;
+      inactive.src = streamUrl;
       inactive.load();
       inactive.pause();
       console.log('Prepared next track:', track.title);
