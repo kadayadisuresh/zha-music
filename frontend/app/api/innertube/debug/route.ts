@@ -1,53 +1,51 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveAudioStream } from '@/lib/innertube/resolveAudio';
+import { Innertube, UniversalCache } from 'youtubei.js';
 import { getStreamingInnertube } from '@/lib/innertube/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// TEMP (live streaming diagnosis): is the cookie applied, does YouTube return
-// streaming data, and where does resolution fail? Delete once fixed.
+async function probe(yt: any, videoId: string, clients: string[]) {
+  const r: Record<string, any> = { signedIn: !!yt?.session?.logged_in };
+  for (const client of clients) {
+    try {
+      const info: any = await yt.getInfo(videoId, { client });
+      r[client] = {
+        play: info?.playability_status?.status,
+        sd: !!info?.streaming_data,
+        fmts: info?.streaming_data?.adaptive_formats?.length || 0,
+      };
+    } catch (e: any) {
+      r[client] = { err: e?.message || String(e) };
+    }
+  }
+  return r;
+}
+
+// TEMP: compare cookie session configs to see which (if any) yields streaming
+// data from this IP. Delete once resolved.
 export async function GET(req: NextRequest) {
   const videoId = new URL(req.url).searchParams.get('video_id') || 'J7p4bzqLvCw';
-  const cookie = process.env.YOUTUBE_COOKIE || '';
-  const out: Record<string, any> = {
-    videoId,
-    cookie: { set: !!cookie, len: cookie.length, sample: cookie.slice(0, 18) },
-  };
+  const cookie = process.env.YOUTUBE_COOKIE?.trim() || undefined;
+  const out: Record<string, any> = { videoId, cookieLen: (cookie || '').length };
 
+  // Config A — cookie only (clean authenticated session, no manual PO token).
   try {
-    const yt: any = await getStreamingInnertube();
-    out.session = {
-      hasPoToken: !!yt?.session?.po_token,
-      isSignedIn: !!yt?.session?.logged_in,
-      visitorData: (yt?.session?.context?.client?.visitorData || '').slice(0, 14),
-    };
-    for (const client of ['TV_SIMPLY', 'WEB', 'IOS'] as const) {
-      try {
-        const info: any = await yt.getInfo(videoId, { client });
-        out['client_' + client] = {
-          playability: info?.playability_status?.status,
-          reason: info?.playability_status?.reason,
-          hasStreamingData: !!info?.streaming_data,
-          adaptiveFormats: info?.streaming_data?.adaptive_formats?.length || 0,
-        };
-      } catch (e: any) {
-        out['client_' + client] = { err: e?.message || String(e) };
-      }
-    }
+    const ytA = await Innertube.create({ cookie, cache: new UniversalCache(false), retrieve_player: true });
+    out.cookieOnly = await probe(ytA, videoId, ['WEB', 'TV_SIMPLY', 'WEB_EMBEDDED']);
   } catch (e: any) {
-    out.sessionErr = e?.message || String(e);
+    out.cookieOnly = { err: e?.message || String(e) };
   }
 
-  for (const client of ['TV_SIMPLY', 'IOS'] as const) {
-    try {
-      const r = await resolveAudioStream(videoId, client);
-      out['resolve_' + client] = { ok: true, hasPot: /[?&]pot=/.test(r.url), len: r.contentLength };
-    } catch (e: any) {
-      out['resolve_' + client] = { ok: false, err: e?.message || String(e) };
-    }
+  // Config B — current getStreamingInnertube (cookie + visitor-bound PO token).
+  try {
+    const ytB: any = await getStreamingInnertube();
+    out.current = await probe(ytB, videoId, ['WEB', 'TV_SIMPLY']);
+    out.current.hasPoToken = !!ytB?.session?.po_token;
+  } catch (e: any) {
+    out.current = { err: e?.message || String(e) };
   }
 
   return NextResponse.json(out);
