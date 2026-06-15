@@ -35,29 +35,44 @@ Deploy target: **Vercel** (frontend) + **Supabase** (data/auth/realtime).
    | --- | --- |
    | `NEXT_PUBLIC_SUPABASE_URL` | `https://YOUR-PROJECT.supabase.co` |
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the project's anon (public) key |
-   | `YOUTUBE_COOKIE` | a logged-in youtube.com `cookie:` header — **required for audio playback** on Vercel (see below) |
+   | `RESOLVER_URL` | URL of your home audio resolver — **required for audio playback** (see below) |
+   | `RESOLVER_TOKEN` | a shared secret protecting the resolver (optional but recommended) |
 
-   The two `NEXT_PUBLIC_*` vars are public (RLS-protected). `YOUTUBE_COOKIE` is a
-   server-only secret. The Supabase service-role key is **not** used at runtime —
-   do **not** add it to Vercel.
+   The two `NEXT_PUBLIC_*` vars are public (RLS-protected). `RESOLVER_URL` /
+   `RESOLVER_TOKEN` are server-only. The Supabase service-role key is **not** used
+   at runtime — do **not** add it to Vercel.
 5. Deploy.
 
-## Audio playback requires `YOUTUBE_COOKIE` on Vercel
+## Audio playback needs a home resolver (Vercel can't stream YouTube)
 
-YouTube blocks **streaming** from datacenter IPs (Vercel, AWS, GCP…) with "Sign in
-to confirm you're not a bot" — even with a valid PO token. Browse/search/home
-still work, but `getInfo` returns no stream formats, so playback fails. The fix is
-to run the streaming session **authenticated** with a YouTube account cookie:
+YouTube hard-blocks **streaming** from datacenter IPs (Vercel, AWS, GCP…) with
+"Sign in to confirm you're not a bot" — even with a valid PO token *and* a
+signed-in cookie (verified empirically). Browse/search/home work; only the audio
+stream is blocked. The fix is to resolve audio from a **residential IP** and have
+Vercel forward to it:
 
-1. Sign in to <https://youtube.com> in a browser (a throwaway account is wise —
-   this is against YouTube ToS and risks the account).
-2. DevTools → Network → click any `youtube.com` request → copy the full **`cookie:`**
-   request header value.
-3. Add it as the Vercel env var `YOUTUBE_COOKIE` (Production + Preview), then
-   redeploy.
+1. **Run this app on a home machine** (residential IP — not blocked):
+   ```
+   cd frontend
+   npm run build && npm start      # serves on http://localhost:3000
+   ```
+   Do **not** set `RESOLVER_URL` here — only the Vercel deployment sets it.
+   (Optional: set `RESOLVER_TOKEN` in the home `.env.local` to the same secret you
+   put on Vercel. For full playback this machine needs the PO-token mint to work,
+   which it does locally; `YOUTUBE_COOKIE` is optional on a residential IP.)
+2. **Expose it with a tunnel**, e.g. Cloudflare Tunnel (no account needed for a
+   quick tunnel):
+   ```
+   cloudflared tunnel --url http://localhost:3000
+   ```
+   Copy the printed `https://<random>.trycloudflare.com` URL.
+3. **On Vercel**, set `RESOLVER_URL` to that tunnel URL (and `RESOLVER_TOKEN` to a
+   matching secret if you set one), then redeploy. Vercel forwards every
+   `/api/innertube/pipe` request to the home resolver and relays the audio.
 
-The cookie **expires periodically** and must be refreshed when playback starts
-failing again. Local dev doesn't need it (a residential IP isn't blocked).
+Only the home machine talks to YouTube for streaming, so the datacenter-IP block
+no longer applies. The catch: the home machine + tunnel must stay running. If
+`RESOLVER_URL` is unset, the app still browses/searches but won't play audio.
 
 ## Notes
 

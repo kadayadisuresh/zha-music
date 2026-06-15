@@ -100,6 +100,49 @@ export async function GET(req: NextRequest) {
   const forceFresh = !!searchParams.get('refresh');
   const rangeHeader = req.headers.get('range');
 
+  // Hybrid resolver: YouTube blocks streaming from datacenter IPs (Vercel), so
+  // when RESOLVER_URL points at a home/residential-IP instance of this app, hand
+  // the whole pipe request off to it and relay the audio back. Set this only on
+  // the hosted (Vercel) deployment — never on the home resolver itself.
+  const resolverUrl = process.env.RESOLVER_URL?.trim();
+  if (resolverUrl) {
+    try {
+      const qs = new URLSearchParams({ video_id: videoId });
+      if (forceFresh) qs.set('refresh', '1');
+      const target = `${resolverUrl.replace(/\/+$/, '')}/api/innertube/pipe?${qs.toString()}`;
+      const fwHeaders: Record<string, string> = {};
+      if (rangeHeader) fwHeaders['Range'] = rangeHeader;
+      const token = process.env.RESOLVER_TOKEN?.trim();
+      if (token) fwHeaders['X-Resolver-Token'] = token;
+      const upstream = await fetch(target, { headers: fwHeaders, signal: AbortSignal.timeout(600000) });
+      if (!upstream.ok && upstream.status !== 206) {
+        return NextResponse.json({ error: 'Resolver failed to stream audio' }, { status: 502 });
+      }
+      const headers: Record<string, string> = {
+        'Content-Type': upstream.headers.get('content-type') || 'audio/mp4',
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=3600',
+        'Access-Control-Allow-Origin': '*',
+      };
+      const cl = upstream.headers.get('content-length');
+      if (cl) headers['Content-Length'] = cl;
+      const cr = upstream.headers.get('content-range');
+      if (cr) headers['Content-Range'] = cr;
+      return new NextResponse(upstream.body as ReadableStream, { status: upstream.status, headers });
+    } catch (error: any) {
+      console.error('[Pipe API] Resolver forward failed:', error?.message || error);
+      return NextResponse.json({ error: 'Resolver unreachable' }, { status: 502 });
+    }
+  }
+
+  // Home resolver: if a shared secret is configured, only serve requests that
+  // carry it (the public tunnel would otherwise be an open resolver). Applies to
+  // local resolution only; the Vercel forward above adds the header.
+  const resolverToken = process.env.RESOLVER_TOKEN?.trim();
+  if (resolverToken && req.headers.get('x-resolver-token') !== resolverToken) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   // No Range header → a full-file download (the offline-download worker). Stream
   // the whole file by chaining bounded chunks, since one large fetch is 403'd.
   if (!rangeHeader) {
