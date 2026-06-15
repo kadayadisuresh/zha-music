@@ -47,32 +47,46 @@ Deploy target: **Vercel** (frontend) + **Supabase** (data/auth/realtime).
 
 YouTube hard-blocks **streaming** from datacenter IPs (Vercel, AWS, GCP…) with
 "Sign in to confirm you're not a bot" — even with a valid PO token *and* a
-signed-in cookie (verified empirically). Browse/search/home work; only the audio
-stream is blocked. The fix is to resolve audio from a **residential IP** and have
-Vercel forward to it:
+signed-in cookie (verified empirically). Browse/search/home work; only audio is
+blocked. So a copy of this app runs on a **home/residential machine**, and Vercel
+forwards every `/api/innertube/pipe` request there; the home machine resolves +
+streams the audio and Vercel relays it. Works from any network.
 
-1. **Run this app on a home machine** (residential IP — not blocked):
-   ```
-   cd frontend
-   npm run build && npm start      # serves on http://localhost:3000
-   ```
-   Do **not** set `RESOLVER_URL` here — only the Vercel deployment sets it.
-   (Optional: set `RESOLVER_TOKEN` in the home `.env.local` to the same secret you
-   put on Vercel. For full playback this machine needs the PO-token mint to work,
-   which it does locally; `YOUTUBE_COOKIE` is optional on a residential IP.)
-2. **Expose it with a tunnel**, e.g. Cloudflare Tunnel (no account needed for a
-   quick tunnel):
-   ```
-   cloudflared tunnel --url http://localhost:3000
-   ```
-   Copy the printed `https://<random>.trycloudflare.com` URL.
-3. **On Vercel**, set `RESOLVER_URL` to that tunnel URL (and `RESOLVER_TOKEN` to a
-   matching secret if you set one), then redeploy. Vercel forwards every
-   `/api/innertube/pipe` request to the home resolver and relays the audio.
+### One-time setup (a permanent Cloudflare named tunnel)
 
-Only the home machine talks to YouTube for streaming, so the datacenter-IP block
-no longer applies. The catch: the home machine + tunnel must stay running. If
-`RESOLVER_URL` is unset, the app still browses/searches but won't play audio.
+A *named* tunnel gives a **stable URL** that survives restarts (unlike a quick
+`trycloudflare.com` tunnel, whose URL changes each run). It requires a free
+Cloudflare account with a **domain on Cloudflare**.
+
+1. `cloudflared tunnel login` — authenticate and pick your domain.
+2. `cloudflared tunnel create zha-resolver` — note the tunnel ID.
+3. `cloudflared tunnel route dns zha-resolver resolver.yourdomain.com`
+4. Create `~/.cloudflared/config.yml`:
+   ```yaml
+   tunnel: <TUNNEL_ID>
+   credentials-file: C:\Users\<you>\.cloudflared\<TUNNEL_ID>.json
+   ingress:
+     - hostname: resolver.yourdomain.com
+       service: http://localhost:3000
+     - service: http_status:404
+   ```
+5. In the home `frontend/.env.local`, set `RESOLVER_TOKEN=<secret>` (a shared
+   secret) and leave `RESOLVER_URL` **unset** (the home resolver must not forward
+   to itself).
+6. On **Vercel** (Project Settings → Environment Variables): set
+   `RESOLVER_URL=https://resolver.yourdomain.com` and `RESOLVER_TOKEN=<same secret>`,
+   then redeploy.
+
+### Daily use — one command
+
+Run **`start-zha.bat`** (repo root). It builds + serves the resolver and starts
+the named tunnel in two windows. Keep them open — while running, anyone can use
+the deployed app and audio plays. Closing the windows takes audio offline.
+
+(Quick alternative without a domain: skip the named tunnel and run
+`cloudflared tunnel --url http://localhost:3000`, then paste the printed
+`trycloudflare.com` URL into Vercel's `RESOLVER_URL` — but that URL changes every
+restart.)
 
 ## Notes
 
