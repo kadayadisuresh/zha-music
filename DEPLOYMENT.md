@@ -52,41 +52,37 @@ blocked. So a copy of this app runs on a **home/residential machine**, and Verce
 forwards every `/api/innertube/pipe` request there; the home machine resolves +
 streams the audio and Vercel relays it. Works from any network.
 
-### One-time setup (a permanent Cloudflare named tunnel)
+### One-time setup (a permanent ngrok static domain)
 
-A *named* tunnel gives a **stable URL** that survives restarts (unlike a quick
-`trycloudflare.com` tunnel, whose URL changes each run). It requires a free
-Cloudflare account with a **domain on Cloudflare**.
+ngrok's free tier gives one **static domain** with a **stable URL** that survives
+restarts (no domain ownership needed).
 
-1. `cloudflared tunnel login` — authenticate and pick your domain.
-2. `cloudflared tunnel create zha-resolver` — note the tunnel ID.
-3. `cloudflared tunnel route dns zha-resolver resolver.yourdomain.com`
-4. Create `~/.cloudflared/config.yml`:
+1. Sign up at <https://ngrok.com> (free) and install ngrok (`winget install ngrok.ngrok`).
+2. Dashboard → **Your Authtoken** → copy it.
+3. Dashboard → **Domains** → create your free static domain (e.g.
+   `your-name.ngrok-free.app`).
+4. Create `~/.ngrok2/ngrok.yml` (or `%LOCALAPPDATA%\ngrok\ngrok.yml`):
    ```yaml
-   tunnel: <TUNNEL_ID>
-   credentials-file: C:\Users\<you>\.cloudflared\<TUNNEL_ID>.json
-   ingress:
-     - hostname: resolver.yourdomain.com
-       service: http://localhost:3000
-     - service: http_status:404
+   version: "2"
+   authtoken: <YOUR_AUTHTOKEN>
+   tunnels:
+     zha:
+       proto: http
+       addr: 3000
+       domain: your-name.ngrok-free.app
    ```
-5. In the home `frontend/.env.local`, set `RESOLVER_TOKEN=<secret>` (a shared
-   secret) and leave `RESOLVER_URL` **unset** (the home resolver must not forward
-   to itself).
+5. In the home `frontend/.env.local`, set `RESOLVER_TOKEN=<secret>` and leave
+   `RESOLVER_URL` **unset** (the home resolver must not forward to itself).
 6. On **Vercel** (Project Settings → Environment Variables): set
-   `RESOLVER_URL=https://resolver.yourdomain.com` and `RESOLVER_TOKEN=<same secret>`,
+   `RESOLVER_URL=https://your-name.ngrok-free.app` and `RESOLVER_TOKEN=<same secret>`,
    then redeploy.
 
 ### Daily use — one command
 
 Run **`start-zha.bat`** (repo root). It builds + serves the resolver and starts
-the named tunnel in two windows. Keep them open — while running, anyone can use
-the deployed app and audio plays. Closing the windows takes audio offline.
-
-(Quick alternative without a domain: skip the named tunnel and run
-`cloudflared tunnel --url http://localhost:3000`, then paste the printed
-`trycloudflare.com` URL into Vercel's `RESOLVER_URL` — but that URL changes every
-restart.)
+the ngrok tunnel (`ngrok start zha`) in two windows. Keep them open — while
+running, anyone can use the deployed app and audio plays. Closing the windows
+takes audio offline. The URL never changes, so `RESOLVER_URL` on Vercel stays put.
 
 ## Notes
 
