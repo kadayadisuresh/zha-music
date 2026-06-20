@@ -9,6 +9,37 @@ import { AlbumCard } from '@/components/shared/AlbumCard';
 import { ArtistCircle } from '@/components/shared/ArtistCircle';
 import { usePlaybackStore } from '@/lib/stores/playbackStore';
 
+/**
+ * Detect a pasted YouTube link (or a bare 11-char video id) and return its video
+ * id, else null. This lets the search box double as an "add by link" entry point:
+ * /api/search only queries YouTube *Music*, so videos that exist on YouTube but
+ * not in the Music catalog can't be found by searching — but they still play and
+ * resolve by id, so a pasted link gets turned into a normal song result.
+ */
+function extractYouTubeVideoId(input: string): string | null {
+  const q = input.trim();
+  const ID = /^[a-zA-Z0-9_-]{11}$/;
+  if (ID.test(q)) return q; // bare id pasted directly
+  if (!/youtu\.?be/i.test(q)) return null; // only parse things that look like a YT link
+  try {
+    const url = new URL(q.startsWith('http') ? q : `https://${q}`);
+    const host = url.hostname.replace(/^www\./, '');
+    if (host === 'youtu.be') {
+      const id = url.pathname.slice(1).split('/')[0];
+      return ID.test(id) ? id : null;
+    }
+    if (host === 'youtube.com' || host === 'music.youtube.com' || host.endsWith('.youtube.com')) {
+      const v = url.searchParams.get('v');
+      if (v && ID.test(v)) return v;
+      const m = url.pathname.match(/\/(?:shorts|embed|v)\/([a-zA-Z0-9_-]{11})/);
+      if (m) return m[1];
+    }
+  } catch {
+    // not a parseable URL — fall through
+  }
+  return null;
+}
+
 function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
@@ -28,6 +59,17 @@ function SearchContent() {
       setIsLoading(true);
       setError(null);
       try {
+        // A pasted YouTube link/id resolves directly (bypasses YT Music search,
+        // which can't find videos outside the Music catalog).
+        const videoId = extractYouTubeVideoId(query);
+        if (videoId) {
+          const res = await fetch(`/api/innertube/track?video_id=${videoId}`);
+          if (!res.ok) throw new Error("Couldn't load that YouTube link.");
+          const track = await res.json();
+          setResults({ songs: [track], albums: [], artists: [] });
+          return;
+        }
+
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         if (!res.ok) throw new Error('Search failed');
         const data = await res.json();
