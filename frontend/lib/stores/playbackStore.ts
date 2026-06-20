@@ -370,9 +370,14 @@ export const usePlaybackStore = create<PlaybackState>()(
 
           if (tracksToAdd.length > 0) {
             const newQueue = [...get().queue, ...tracksToAdd];
-            set({ 
+            set({
               queue: newQueue,
-              originalQueue: [...get().originalQueue, ...tracksToAdd]
+              originalQueue: [...get().originalQueue, ...tracksToAdd],
+              // If the current track was the last one (nextTrack null), the first
+              // freshly-appended autoplay track becomes the next — without this,
+              // auto-advance reads a null nextTrack and playback stops. (startRadio
+              // already does this; fetchAutoplay must too.)
+              nextTrack: get().nextTrack || tracksToAdd[0],
             });
           }
         } catch {
