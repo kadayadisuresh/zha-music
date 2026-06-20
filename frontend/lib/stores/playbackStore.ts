@@ -164,8 +164,12 @@ export const usePlaybackStore = create<PlaybackState>()(
           index = newQueue.length - 1;
         }
 
-        get().setQueueIndex(index);
+        // Set currentTrack BEFORE setQueueIndex: setQueueIndex may call
+        // fetchAutoplay(), which bails on `!currentTrack`. If we set it after,
+        // the first play seeds autoplay from a null/stale track (radio never
+        // fetched) and nothing ever queues up — auto-advance never starts.
         set({ currentTrack: track, isPlaying: true });
+        get().setQueueIndex(index);
 
         import('../audio/AudioEngine').then(({ audioEngine }) => {
           audioEngine.play(track.id, track);
