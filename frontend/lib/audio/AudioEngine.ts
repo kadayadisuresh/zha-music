@@ -267,6 +267,17 @@ class AudioEngine {
 
     const outPlayer = this.activePlayer;
     const inPlayer = this.inactivePlayer;
+
+    // The incoming player is normally preloaded by checkPrefetch — but that runs
+    // on the rAF monitor, which the browser pauses when the tab/screen isn't
+    // foregrounded (common on mobile / locked screen). If preload didn't happen,
+    // inPlayer has no (or a stale) src and playing it throws "Empty src
+    // attribute", so the track never advances (autoplay appears broken). Ensure
+    // it's loaded with nextTrack before switching.
+    if (!inPlayer.src || !inPlayer.src.includes(`video_id=${nextTrack.id}`)) {
+      await this.prepareNext(nextTrack);
+    }
+
     const { volume, isMuted } = usePlaybackStore.getState();
     const vol = typeof volume === 'number' && !isNaN(volume) ? volume : 1.0;
     const muted = !!isMuted;
