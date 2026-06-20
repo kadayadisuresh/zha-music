@@ -18,7 +18,9 @@ export async function GET(request: NextRequest) {
     }
 
     // 1. Fetch filtered categories in parallel to get high-fidelity metadata (including accurate durations for songs)
-    const [songResults, albumResults, artistResults] = await Promise.all([
+    //    Plus a regular YouTube *video* search so songs that exist on YouTube but
+    //    NOT in the YouTube Music catalog (e.g. film songs) are findable by name.
+    const [songResults, albumResults, artistResults, videoResults] = await Promise.all([
       yt.music.search(query, { type: 'song' }).catch(err => {
         console.warn('[Search API] Filtered song search failed:', err);
         return null;
@@ -29,6 +31,10 @@ export async function GET(request: NextRequest) {
       }),
       yt.music.search(query, { type: 'artist' }).catch(err => {
         console.warn('[Search API] Filtered artist search failed:', err);
+        return null;
+      }),
+      yt.search(query, { type: 'video' }).catch(err => {
+        console.warn('[Search API] YouTube video search failed:', err);
         return null;
       }),
     ]);
@@ -109,12 +115,39 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`[Search API] Found ${songs.length} songs, ${albums.length} albums, ${artists.length} artists`);
+    // 3. Regular YouTube video results as a separate "Videos" group — this is
+    //    what surfaces songs that aren't in the YT Music catalog (e.g. film
+    //    songs). Kept separate (not merged into songs) so they stay visible
+    //    instead of being buried under YT Music's fuzzy matches. Deduped against
+    //    the Music songs so a track in both isn't shown twice. The search
+    //    response carries title/author/duration inline, so no per-video getInfo
+    //    (works on Vercel's datacenter IP).
+    const videos: typeof songs = [];
+    if (videoResults) {
+      try {
+        const seenIds = new Set(songs.map(s => s.id));
+        const SHORTS = new Set(['ReelItem', 'ShortsLockupView']);
+        const rawVideos = ((videoResults as any).videos || [])
+          .filter((v: any) => (v?.video_id || v?.id) && !SHORTS.has(v?.type))
+          .slice(0, 12);
+        for (const v of rawVideos) {
+          const track = mapTrack(v);
+          if (!track.id || seenIds.has(track.id)) continue;
+          videos.push(track);
+          seenIds.add(track.id);
+        }
+      } catch (videoErr) {
+        console.warn('[Search API] YouTube video merge failed:', videoErr);
+      }
+    }
+
+    console.log(`[Search API] Found ${songs.length} songs, ${albums.length} albums, ${artists.length} artists, ${videos.length} videos`);
 
     return NextResponse.json({
       songs,
       albums,
       artists,
+      videos,
     });
   } catch (error) {
     console.error('[Search API] Error:', error);

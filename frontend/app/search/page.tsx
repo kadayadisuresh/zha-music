@@ -118,6 +118,18 @@ function SearchContent() {
             </section>
           )}
 
+          {/* Videos — regular YouTube results (songs not in YT Music) */}
+          {results.videos && results.videos.length > 0 && (
+            <section>
+              <h2 className="text-2xl font-bold mb-4">Videos</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                {results.videos.slice(0, 10).map((video, idx) => (
+                  <TrackItem key={`v-${video.id}-${idx}`} track={video} onClick={() => playTrack(video)} />
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Albums */}
           {results.albums && results.albums.length > 0 && (
             <section>
@@ -142,8 +154,9 @@ function SearchContent() {
             </section>
           )}
 
-          {(!results.songs || results.songs.length === 0) && 
-           (!results.albums || results.albums.length === 0) && 
+          {(!results.songs || results.songs.length === 0) &&
+           (!results.videos || results.videos.length === 0) &&
+           (!results.albums || results.albums.length === 0) &&
            (!results.artists || results.artists.length === 0) && (
              <div className="text-center py-20 text-zinc-500">
                 No results found for &quot;{query}&quot;

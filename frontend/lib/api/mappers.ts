@@ -42,6 +42,9 @@ export const SearchResultSchema = z.object({
   songs: z.array(TrackSchema),
   albums: z.array(AlbumSchema),
   artists: z.array(SearchArtistSchema),
+  // Regular YouTube video results (songs not in the YT Music catalog). Optional
+  // so other producers of SearchResult (e.g. the add-by-link path) can omit it.
+  videos: z.array(TrackSchema).optional(),
 });
 
 export const ArtistDetailsSchema = z.object({
@@ -197,7 +200,9 @@ export function mapTrack(item: any): Track {
   return {
     id: item.id || item.video_id,
     title,
-    artists: (item.artists || item.authors || []).map(mapArtist),
+    // Music items expose `artists`/`authors` (plural); a plain YouTube Video
+    // node from regular search exposes a single `author` — support both.
+    artists: (item.artists || item.authors || (item.author ? [item.author] : [])).map(mapArtist),
     album: item.album ? { 
       id: item.album.id || item.album.browse_id, 
       name: (typeof item.album.name === 'string' ? item.album.name : item.album.text) 
