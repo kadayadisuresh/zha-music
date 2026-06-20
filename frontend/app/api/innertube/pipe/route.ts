@@ -20,6 +20,21 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 // session and both get 403'd by googlevideo — sharing one resolution fixes it.
 const inflight = new Map<string, Promise<Resolved>>();
 
+// Per-client resolve budget. A warm getInfo+decipher is ~1-2s; without a cap a
+// transient "fetch failed"/slow getInfo on one client (e.g. TV_SIMPLY over a
+// home connection) can stall ~30s before falling through to the next client.
+// Bound each attempt so a stalled client fails over fast.
+const RESOLVE_TIMEOUT_MS = 8000;
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms),
+    ),
+  ]);
+}
+
 // A desktop UA keeps googlevideo from rejecting the proxied byte fetch.
 const UPSTREAM_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -69,7 +84,11 @@ function resolveWorkingUrl(videoId: string, forceFresh: boolean): Promise<Resolv
     let lastErr: unknown;
     for (const client of STREAM_CLIENTS) {
       try {
-        const r = await resolveAudioStream(videoId, client);
+        const r = await withTimeout(
+          resolveAudioStream(videoId, client),
+          RESOLVE_TIMEOUT_MS,
+          `resolve via ${client}`,
+        );
         const resolved: Resolved = { url: r.url, mimeType: r.mimeType, contentLength: r.contentLength };
         urlCache.set(videoId, { ...resolved, expires: Date.now() + CACHE_TTL });
         pruneCache();
