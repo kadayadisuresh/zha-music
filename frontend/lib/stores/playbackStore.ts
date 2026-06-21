@@ -363,14 +363,22 @@ export const usePlaybackStore = create<PlaybackState>()(
           const suggestions = data.tracks || [];
           if (suggestions.length === 0) return;
 
-          const tracksToAdd = suggestions.slice(0, 20).map((t: any) => ({
-            id: t.videoId,
-            title: t.title,
-            artists: t.artists || [],
-            thumbnail: t.thumbnails ? t.thumbnails[0]?.url : undefined,
-            queueId: generateQueueId(),
-            isAutoplay: true
-          }));
+          // Dedup against what's already queued. Radio's first item is usually
+          // the seed (currently-playing) track; re-adding it makes nextTrack
+          // point at the song already playing, so auto-advance just replays it
+          // instead of moving on. (startRadio dedups the same way.)
+          const existingIds = new Set(get().queue.map(t => t.id));
+          const tracksToAdd = suggestions
+            .filter((t: any) => t.videoId && !existingIds.has(t.videoId))
+            .slice(0, 20)
+            .map((t: any) => ({
+              id: t.videoId,
+              title: t.title,
+              artists: t.artists || [],
+              thumbnail: t.thumbnails ? t.thumbnails[0]?.url : undefined,
+              queueId: generateQueueId(),
+              isAutoplay: true
+            }));
 
           if (tracksToAdd.length > 0) {
             const newQueue = [...get().queue, ...tracksToAdd];
